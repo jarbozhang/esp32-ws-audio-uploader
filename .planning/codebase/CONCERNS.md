@@ -1,206 +1,206 @@
-# Codebase Concerns
+# 代码库问题
 
-**Analysis Date:** 2026-02-02
+**分析日期:** 2026-02-02
 
-## Tech Debt
+## 技术债务
 
-**Incomplete Scaffold - Core Audio Recording Not Implemented:**
-- Issue: Main loop does not actually record from I2S microphone. Lines 86-90 in `src/main.cpp` show PTT + audio recording is still TODO.
-- Files: `src/main.cpp` (lines 86-91)
-- Impact: Device cannot perform its primary function - capturing and streaming audio. Current implementation only demonstrates WebSocket protocol handshake without actual audio capture. Any deployment will be non-functional.
-- Fix approach: Implement I2S audio driver initialization in `setup()`, add PTT button polling in `loop()`, and stream PCM audio frames via `ws.sendBIN()` between `sendStart()` and `sendEnd()` calls.
+**不完整的脚手架 - 核心音频录制未实现:**
+- 问题: 主循环实际上并未从 I2S 麦克风录制。`src/main.cpp` 的 lines 86-90 显示 PTT + 音频录制仍是 TODO。
+- 文件: `src/main.cpp` (lines 86-91)
+- 影响: 设备无法执行其主要功能 - 捕获和流式传输音频。当前实现仅演示 WebSocket 协议握手，没有实际的音频捕获。任何部署都将无法正常工作。
+- 修复方法: 在 `setup()` 中实现 I2S 音频驱动初始化，在 `loop()` 中添加 PTT 按钮轮询，并在 `sendStart()` 和 `sendEnd()` 调用之间通过 `ws.sendBIN()` 流式传输 PCM 音频帧。
 
-**Hardcoded Configuration in Source Code:**
-- Issue: WiFi SSID, password, and server IP are hardcoded in `src/main.cpp` (lines 6-10, 13) instead of stored in device flash or configuration partition.
-- Files: `src/main.cpp` (lines 6-13)
-- Impact: Firmware must be recompiled for each new network/server environment. Credentials are exposed in version control. No flexibility for field deployment or testing in different locations.
-- Fix approach: Implement NVS (Non-Volatile Storage) or SPIFFS-based configuration system. Store WiFi and server details in persistent storage, with USB serial or web-based provisioning interface for field updates.
+**源代码中的硬编码配置:**
+- 问题: WiFi SSID、密码和服务器 IP 在 `src/main.cpp` (lines 6-10, 13) 中硬编码，而不是存储在设备闪存或配置分区中。
+- 文件: `src/main.cpp` (lines 6-13)
+- 影响: 每个新网络/服务器环境都必须重新编译固件。凭证暴露在版本控制中。现场部署或在不同位置测试没有灵活性。
+- 修复方法: 实现基于 NVS (非易失性存储) 或 SPIFFS 的配置系统。将 WiFi 和服务器详细信息存储在持久存储中，并通过 USB 串口或基于 Web 的配置界面进行现场更新。
 
-**String Concatenation for JSON Serialization:**
-- Issue: JSON messages are built using `String()` concatenation in `sendStart()` (line 28-33) and `sendEnd()` (line 37-40), which is inefficient and error-prone.
-- Files: `src/main.cpp` (lines 27-41)
-- Impact: Difficult to maintain JSON structure, risk of malformed messages if values contain special characters. Memory fragmentation due to repeated string allocations on embedded device.
-- Fix approach: Use a proper JSON library (e.g., ArduinoJson) to serialize messages. This improves code clarity and ensures valid JSON.
+**用于 JSON 序列化的字符串拼接:**
+- 问题: JSON 消息使用 `sendStart()` (line 28-33) 和 `sendEnd()` (line 37-40) 中的 `String()` 拼接构建，这是低效且容易出错的。
+- 文件: `src/main.cpp` (lines 27-41)
+- 影响: 难以维护 JSON 结构，如果值包含特殊字符则存在格式错误消息的风险。嵌入式设备上由于重复的字符串分配导致内存碎片。
+- 修复方法: 使用适当的 JSON 库 (例如 ArduinoJson) 来序列化消息。这提高了代码清晰度并确保有效的 JSON。
 
-**Placeholder/Default Request ID:**
-- Issue: Request ID is hardcoded as `"req-1"` (line 25) and never changed between sessions.
-- Files: `src/main.cpp` (line 25)
-- Impact: Cannot distinguish or correlate multiple recording sessions. ASR server cannot differentiate between requests. If client reconnects without changing reqId, server may return cached results or duplicate processing.
-- Fix approach: Generate unique reqIds using timestamp, UUID, or incrementing counter. Reset or regenerate on each new recording session.
+**占位符/默认请求 ID:**
+- 问题: 请求 ID 硬编码为 `"req-1"` (line 25)，在会话之间从不更改。
+- 文件: `src/main.cpp` (line 25)
+- 影响: 无法区分或关联多个录制会话。ASR 服务器无法区分请求。如果客户端在不更改 reqId 的情况下重新连接，服务器可能返回缓存的结果或重复处理。
+- 修复方法: 使用时间戳、UUID 或递增计数器生成唯一的 reqIds。在每个新录制会话时重置或重新生成。
 
-## Known Bugs
+## 已知 Bug
 
-**Serial Monitor Assumption:**
-- Symptoms: Code calls `Serial.println()` and `Serial.printf()` extensively (lines 46, 49, 53, 56, 69-76) but does not check if serial is properly initialized.
-- Files: `src/main.cpp` (entire file uses Serial)
-- Trigger: If USB serial is disabled at compile time or hardware issue occurs, output is lost silently. Build flag `-DARDUINO_USB_CDC_ON_BOOT=1` assumes CDC-over-USB is always available.
-- Workaround: Ensure correct USB mode is selected in board settings. Serial monitor must be opened before device sends output.
+**串口监视器假设:**
+- 症状: 代码广泛调用 `Serial.println()` 和 `Serial.printf()` (lines 46, 49, 53, 56, 69-76)，但不检查串口是否正确初始化。
+- 文件: `src/main.cpp` (整个文件使用 Serial)
+- 触发: 如果在编译时禁用 USB 串口或发生硬件问题，输出将静默丢失。构建标志 `-DARDUINO_USB_CDC_ON_BOOT=1` 假设 CDC-over-USB 始终可用。
+- 解决方法: 确保在开发板设置中选择了正确的 USB 模式。设备发送输出之前必须打开串口监视器。
 
-**WiFi Connection Blocking:**
-- Symptoms: `WiFi.begin()` (line 68) followed by synchronous blocking loop (lines 70-73) halts all execution until WiFi connects.
-- Files: `src/main.cpp` (lines 68-76)
-- Trigger: If WiFi network is unreachable or credentials are wrong, device will appear frozen during boot. User sees dots being printed and no timeout mechanism.
-- Workaround: Network must be available and reachable before device boots. Manual restart required if WiFi fails.
+**WiFi 连接阻塞:**
+- 症状: `WiFi.begin()` (line 68) 后跟同步阻塞循环 (lines 70-73)，在 WiFi 连接之前停止所有执行。
+- 文件: `src/main.cpp` (lines 68-76)
+- 触发: 如果 WiFi 网络不可达或凭证错误，设备在启动期间将显示冻结。用户看到正在打印点，没有超时机制。
+- 解决方法: 网络必须在设备启动之前可用且可达。如果 WiFi 失败，需要手动重启。
 
-**No WebSocket Reconnection Behavior Defined:**
-- Symptoms: `ws.setReconnectInterval(2000)` (line 80) sets reconnect interval, but no custom reconnection handler defined. Default behavior may not suit long-running audio sessions.
-- Files: `src/main.cpp` (line 80)
-- Trigger: If server drops connection mid-recording, WebSocket library may not cleanly handle resumption. Audio stream will be incomplete.
-- Workaround: Only deploy in stable network environments. Manual device restart needed if connection drops during recording.
+**未定义 WebSocket 重新连接行为:**
+- 症状: `ws.setReconnectInterval(2000)` (line 80) 设置重连间隔，但未定义自定义重连处理程序。默认行为可能不适合长时间运行的音频会话。
+- 文件: `src/main.cpp` (line 80)
+- 触发: 如果服务器在录制过程中断开连接，WebSocket 库可能无法干净地处理恢复。音频流将不完整。
+- 解决方法: 仅在稳定的网络环境中部署。如果在录制期间连接断开，需要手动设备重启。
 
-## Security Considerations
+## 安全考虑
 
-**Hardcoded Authentication Token:**
-- Risk: Auth token is hardcoded as `"change_me"` (line 13) in source code and committed to version control.
-- Files: `src/main.cpp` (line 13)
-- Current mitigation: Comment says "change_me" (developer reminder only, not enforced).
-- Recommendations: Store token in NVS encrypted partition or environment variable. Implement token rotation mechanism. Never commit secrets to git - use .gitignore or environment variable substitution during build.
+**硬编码的认证令牌:**
+- 风险: 认证令牌在源代码中硬编码为 `"change_me"` (line 13) 并提交到版本控制。
+- 文件: `src/main.cpp` (line 13)
+- 当前缓解: 注释说 "change_me" (仅开发者提醒，未强制执行)。
+- 建议: 将令牌存储在 NVS 加密分区或环境变量中。实现令牌轮换机制。永远不要将秘密提交到 git - 在构建期间使用 .gitignore 或环境变量替换。
 
-**No Input Validation on WebSocket Messages:**
-- Risk: `webSocketEvent()` (lines 43-61) receives and prints payloads without validation. Malicious server could send oversized or malformed data causing buffer overflow or denial of service.
-- Files: `src/main.cpp` (lines 43-61, especially lines 53 and 56)
-- Current mitigation: None - raw `payload` pointer and `length` are used directly in `Serial.printf()`.
-- Recommendations: Validate message length before printing. Use bounds checking on `length`. Parse JSON instead of printing raw payloads. Implement message size limits to prevent DoS.
+**WebSocket 消息上没有输入验证:**
+- 风险: `webSocketEvent()` (lines 43-61) 接收并打印负载而不进行验证。恶意服务器可能发送超大或格式错误的数据，导致缓冲区溢出或拒绝服务。
+- 文件: `src/main.cpp` (lines 43-61, 尤其是 lines 53 和 56)
+- 当前缓解: 无 - 原始 `payload` 指针和 `length` 直接在 `Serial.printf()` 中使用。
+- 建议: 在打印之前验证消息长度。对 `length` 使用边界检查。解析 JSON 而不是打印原始负载。实现消息大小限制以防止 DoS。
 
-**No WiFi Security Configuration:**
-- Risk: WiFi mode is set to `WIFI_STA` (line 67) but WiFi security settings are not explicitly configured beyond SSID/password.
-- Files: `src/main.cpp` (line 67)
-- Current mitigation: Relies on standard Arduino WiFi library defaults (usually WPA2).
-- Recommendations: Explicitly set WiFi security mode (e.g., `WiFi.begin(SSID, PASS, CHANNEL, BSSID, WPA_SECURITY)`). Validate server certificate for WSS (WebSocket Secure) connections if not on trusted LAN.
+**没有 WiFi 安全配置:**
+- 风险: WiFi 模式设置为 `WIFI_STA` (line 67)，但除了 SSID/密码之外，WiFi 安全设置未明确配置。
+- 文件: `src/main.cpp` (line 67)
+- 当前缓解: 依赖标准 Arduino WiFi 库默认值 (通常是 WPA2)。
+- 建议: 明确设置 WiFi 安全模式 (例如 `WiFi.begin(SSID, PASS, CHANNEL, BSSID, WPA_SECURITY)`)。如果不在受信任的局域网上，验证 WSS (WebSocket Secure) 连接的服务器证书。
 
-**No Rate Limiting or DDoS Protection:**
-- Risk: Device will accept and forward any WebSocket frames from server without rate limiting. No protection against malicious server flooding device with messages.
-- Files: `src/main.cpp` (WebSocket library integration)
-- Current mitigation: None.
-- Recommendations: Implement message rate limiting in `webSocketEvent()`. Add timeout mechanisms for idle connections. Validate that audio chunks are within expected size range.
+**没有速率限制或 DDoS 保护:**
+- 风险: 设备将接受并转发来自服务器的任何 WebSocket 帧，没有速率限制。没有防止恶意服务器用消息淹没设备的保护。
+- 文件: `src/main.cpp` (WebSocket 库集成)
+- 当前缓解: 无。
+- 建议: 在 `webSocketEvent()` 中实现消息速率限制。为空闲连接添加超时机制。验证音频块在预期大小范围内。
 
-## Performance Bottlenecks
+## 性能瓶颈
 
-**Synchronous WiFi Connection Blocking Boot:**
-- Problem: `while (WiFi.status() != WL_CONNECTED)` (line 70) blocks entire device startup. If WiFi is slow, device is unresponsive for several seconds.
-- Files: `src/main.cpp` (lines 70-73)
-- Cause: No async WiFi connection handling. Device waits for connection before proceeding to WebSocket setup.
-- Improvement path: Implement async WiFi event handlers (e.g., `WiFi.onEvent()`) to allow device to continue initialization while WiFi connects in background. WebSocket connection can be attempted after WiFi is ready.
+**同步 WiFi 连接阻塞启动:**
+- 问题: `while (WiFi.status() != WL_CONNECTED)` (line 70) 阻塞整个设备启动。如果 WiFi 慢，设备在几秒钟内无响应。
+- 文件: `src/main.cpp` (lines 70-73)
+- 原因: 没有异步 WiFi 连接处理。设备在继续 WebSocket 设置之前等待连接。
+- 改进路径: 实现异步 WiFi 事件处理程序 (例如 `WiFi.onEvent()`)，允许设备在 WiFi 在后台连接时继续初始化。WiFi 就绪后可以尝试 WebSocket 连接。
 
-**String Allocation in Loop:**
-- Problem: `loop()` calls `ws.loop()` which may allocate string buffers for WebSocket frame processing. Combined with delay, this could cause memory fragmentation on long-running device.
-- Files: `src/main.cpp` (lines 84-91)
-- Cause: No explicit memory management or pooling for WebSocket buffers.
-- Improvement path: Profile heap usage during extended operation. Consider buffer pools for audio frames. Implement periodic garbage collection or reset.
+**循环中的字符串分配:**
+- 问题: `loop()` 调用 `ws.loop()`，可能为 WebSocket 帧处理分配字符串缓冲区。结合延迟，这可能导致长时间运行设备上的内存碎片。
+- 文件: `src/main.cpp` (lines 84-91)
+- 原因: 没有明确的内存管理或 WebSocket 缓冲区池。
+- 改进路径: 在扩展操作期间分析堆使用情况。考虑音频帧的缓冲池。实现定期垃圾回收或重置。
 
-**Fixed 10ms Loop Delay:**
-- Problem: `delay(10)` (line 91) in main loop is arbitrary and may be too fast or too slow for PTT + audio streaming.
-- Files: `src/main.cpp` (line 91)
-- Cause: No dynamic adjustment based on actual audio buffer fill level or network conditions.
-- Improvement path: Replace fixed delay with event-driven model. Trigger recording on button interrupt instead of polling. Adjust transmission rate based on network latency.
+**固定 10ms 循环延迟:**
+- 问题: 主循环中的 `delay(10)` (line 91) 是任意的，对于 PTT + 音频流式传输可能太快或太慢。
+- 文件: `src/main.cpp` (line 91)
+- 原因: 没有基于实际音频缓冲区填充水平或网络条件的动态调整。
+- 改进路径: 用事件驱动模型替换固定延迟。在按钮中断上触发录制而不是轮询。根据网络延迟调整传输速率。
 
-## Fragile Areas
+## 脆弱区域
 
-**WebSocket Event Handler - Single Point of Failure:**
-- Files: `src/main.cpp` (lines 43-61)
-- Why fragile: `webSocketEvent()` handles all WebSocket events (connect, disconnect, text, binary) without error handling. If any event processing throws exception, entire WebSocket subsystem could crash. No retry logic or state recovery.
-- Safe modification: Add try-catch style error handling (C++ exceptions or error codes). Log all event transitions. Test with server disconnections and malformed messages.
-- Test coverage: No test coverage for event sequences (e.g., rapid connect/disconnect cycles, out-of-order messages).
+**WebSocket 事件处理程序 - 单点故障:**
+- 文件: `src/main.cpp` (lines 43-61)
+- 为什么脆弱: `webSocketEvent()` 处理所有 WebSocket 事件 (连接、断开、文本、二进制) 而没有错误处理。如果任何事件处理抛出异常，整个 WebSocket 子系统可能崩溃。没有重试逻辑或状态恢复。
+- 安全修改: 添加 try-catch 样式的错误处理 (C++ 异常或错误代码)。记录所有事件转换。使用服务器断开连接和格式错误的消息进行测试。
+- 测试覆盖率: 没有事件序列的测试覆盖率 (例如快速连接/断开循环、无序消息)。
 
-**Startup Initialization Sequence:**
-- Files: `src/main.cpp` (lines 63-81)
-- Why fragile: Sequential dependency chain - Serial → WiFi → WebSocket. If any step hangs or fails, subsequent steps never execute. No timeout or fallback mechanism.
-- Safe modification: Add explicit timeout for WiFi connection (e.g., 30 seconds max). Implement async initialization state machine. Allow partial startup (e.g., WebSocket reconnection even if initial connection fails).
-- Test coverage: Not tested with missing WiFi, unavailable server, or hardware initialization failures.
+**启动初始化序列:**
+- 文件: `src/main.cpp` (lines 63-81)
+- 为什么脆弱: 顺序依赖链 - Serial → WiFi → WebSocket。如果任何步骤挂起或失败，后续步骤永远不会执行。没有超时或回退机制。
+- 安全修改: 为 WiFi 连接添加明确的超时 (例如最多 30 秒)。实现异步初始化状态机。允许部分启动 (例如即使初始连接失败，WebSocket 也可重新连接)。
+- 测试覆盖率: 未使用缺少的 WiFi、不可用的服务器或硬件初始化失败进行测试。
 
-**Audio Format Constants - No Validation:**
-- Files: `src/main.cpp` (lines 18-20)
-- Why fragile: Audio format parameters (16kHz, 16-bit mono) are hardcoded and embedded in JSON messages. If actual I2S hardware uses different format, messages will be misleading. No runtime validation that recorded audio matches advertised format.
-- Safe modification: Read actual I2S configuration at runtime. Validate that recorded samples match advertised format before sending to server.
-- Test coverage: Format mismatch between client claim and actual data is not detectable.
+**音频格式常量 - 没有验证:**
+- 文件: `src/main.cpp` (lines 18-20)
+- 为什么脆弱: 音频格式参数 (16kHz, 16位单声道) 是硬编码的并嵌入在 JSON 消息中。如果实际的 I2S 硬件使用不同的格式，消息将是误导性的。没有运行时验证录制的音频与广告格式匹配。
+- 安全修改: 在运行时读取实际的 I2S 配置。在发送到服务器之前验证录制的样本与广告格式匹配。
+- 测试覆盖率: 客户端声明和实际数据之间的格式不匹配是不可检测的。
 
-## Scaling Limits
+## 扩展限制
 
-**Single Recording Session Per Device:**
-- Current capacity: Only one `reqId` ("req-1") - device assumes one concurrent recording session.
-- Limit: If user presses PTT button while previous recording is still being streamed, behavior is undefined. No queue or session management.
-- Scaling path: Implement queue for multiple recording requests. Assign unique reqIds per session. Handle overlapping transmissions gracefully.
+**每个设备单个录制会话:**
+- 当前容量: 只有一个 `reqId` ("req-1") - 设备假设一个并发录制会话。
+- 限制: 如果用户在前一个录制仍在流式传输时按下 PTT 按钮，行为未定义。没有队列或会话管理。
+- 扩展路径: 为多个录制请求实现队列。为每个会话分配唯一的 reqIds。优雅地处理重叠传输。
 
-**Memory for Audio Buffering:**
-- Current capacity: No explicit audio buffer allocated. Real-time streaming to server with no local buffering.
-- Limit: If network latency spikes, no buffer to absorb delay. Audio will underrun or drop frames.
-- Scaling path: Implement circular audio buffer with size based on ESP32 available RAM (typically 300-500KB heap). Add latency compensation by buffering 0.5-1 second of audio before transmission.
+**音频缓冲的内存:**
+- 当前容量: 没有分配显式的音频缓冲区。实时流式传输到服务器，没有本地缓冲。
+- 限制: 如果网络延迟峰值，没有缓冲区来吸收延迟。音频将欠载或丢帧。
+- 扩展路径: 基于 ESP32 可用 RAM 实现循环音频缓冲区 (通常 300-500KB 堆)。在传输之前缓冲 0.5-1 秒的音频，添加延迟补偿。
 
-**WebSocket Library - Single Connection:**
-- Current capacity: One WebSocket client (`ws` global variable). No support for multiple servers or failover.
-- Limit: If primary server becomes unavailable, no automatic failover. Manual restart required.
-- Scaling path: Implement list of backup servers. Implement automatic server failover logic in WebSocket event handler.
+**WebSocket 库 - 单连接:**
+- 当前容量: 一个 WebSocket 客户端 (`ws` 全局变量)。不支持多个服务器或故障转移。
+- 限制: 如果主服务器变得不可用，没有自动故障转移。需要手动重启。
+- 扩展路径: 实现备份服务器列表。在 WebSocket 事件处理程序中实现自动服务器故障转移逻辑。
 
-## Dependencies at Risk
+## 有风险的依赖项
 
-**WebSockets Library (links2004/WebSockets@^2.4.1):**
-- Risk: Dependency uses caret versioning (`^2.4.1`), which allows minor/patch updates automatically. Library may change behavior in updates without explicit version bump. Library is community-maintained third-party package.
-- Impact: Unexpected behavior after PlatformIO updates packages. Possible breaking changes in WebSocket protocol handling.
-- Migration plan: Pin to exact version (`2.4.1`) to ensure reproducible builds. Monitor library repository for security updates. Plan for alternate WebSocket library (e.g., embedded within firmware).
+**WebSockets 库 (links2004/WebSockets@^2.4.1):**
+- 风险: 依赖项使用插入符号版本控制 (`^2.4.1`)，自动允许次要/补丁更新。库可能在更新中改变行为而没有显式的版本号提升。库是社区维护的第三方包。
+- 影响: PlatformIO 更新包后出现意外行为。WebSocket 协议处理中可能存在破坏性更改。
+- 迁移计划: 固定到确切版本 (`2.4.1`) 以确保可重现的构建。监视库仓库的安全更新。计划备用 WebSocket 库 (例如嵌入固件中)。
 
-**Arduino Framework Version (Espressif32):**
-- Risk: `platform = espressif32` does not specify version. PlatformIO will pull latest version during builds, which may introduce breaking changes to WiFi or I2S APIs.
-- Impact: Code may fail to compile with new framework versions.
-- Migration plan: Pin platform version (e.g., `platform = espressif32@6.3.0`). Test regularly with new releases.
+**Arduino 框架版本 (Espressif32):**
+- 风险: `platform = espressif32` 未指定版本。PlatformIO 将在构建期间拉取最新版本，可能会引入 WiFi 或 I2S API 的破坏性更改。
+- 影响: 代码可能无法使用新框架版本编译。
+- 迁移计划: 固定平台版本 (例如 `platform = espressif32@6.3.0`)。定期使用新版本进行测试。
 
-**WiFi Availability Assumption:**
-- Risk: Code assumes WiFi network with specific SSID always exists. No fallback or offline mode.
-- Impact: Device cannot operate without WiFi. Cannot be tested in environments without network.
-- Migration plan: Implement offline mode or BLE provisioning for network-less setup. Consider mesh networking for robustness.
+**WiFi 可用性假设:**
+- 风险: 代码假设具有特定 SSID 的 WiFi 网络始终存在。没有回退或离线模式。
+- 影响: 设备没有 WiFi 就无法运行。无法在没有网络的环境中测试。
+- 迁移计划: 实现离线模式或用于无网络设置的 BLE 配置。考虑网状网络以提高鲁棒性。
 
-## Missing Critical Features
+## 缺少的关键功能
 
-**No Button/PTT Input Handling:**
-- Problem: Core feature (push-to-talk recording) has no implementation. Lines 86-90 are placeholder comments.
-- Blocks: Device cannot initiate recording. User has no way to control when audio is captured.
-- Status: Critical blocker for any real-world use. Must implement GPIO input handling for button, debouncing, and state transitions.
+**没有按钮/PTT 输入处理:**
+- 问题: 核心功能 (按键通话录制) 没有实现。Lines 86-90 是占位符注释。
+- 阻止: 设备无法启动录制。用户无法控制何时捕获音频。
+- 状态: 任何实际使用的关键阻止因素。必须为按钮实现 GPIO 输入处理、去抖动和状态转换。
 
-**No I2S Audio Capture:**
-- Problem: Device does not initialize I2S peripheral or read audio samples from microphone. Comment on line 22-23 explicitly states "we don't actually record from I2S yet".
-- Blocks: Device captures no audio. WebSocket messages are sent empty (no audio data).
-- Status: Critical blocker. Must implement I2S driver initialization, microphone hardware interface, sample buffering, and PCM encoding.
+**没有 I2S 音频捕获:**
+- 问题: 设备不初始化 I2S 外设或从麦克风读取音频样本。Line 22-23 上的注释明确说明 "我们实际上还没有从 I2S 录制"。
+- 阻止: 设备不捕获音频。WebSocket 消息被发送为空 (没有音频数据)。
+- 状态: 关键阻止因素。必须实现 I2S 驱动初始化、麦克风硬件接口、样本缓冲和 PCM 编码。
 
-**No Audio Format Negotiation:**
-- Problem: Audio format is hardcoded (16kHz, 16-bit, mono) with no negotiation with server. If server requires different format, no mechanism to adapt.
-- Blocks: Cannot work with servers that expect different formats (e.g., 8kHz for speech recognition, stereo for music).
-- Status: Medium priority. Negotiate format during `start` handshake or detect server capabilities.
+**没有音频格式协商:**
+- 问题: 音频格式是硬编码的 (16kHz, 16位, 单声道)，没有与服务器协商。如果服务器需要不同的格式，没有适应机制。
+- 阻止: 无法与期望不同格式的服务器一起工作 (例如用于语音识别的 8kHz、用于音乐的立体声)。
+- 状态: 中等优先级。在 `start` 握手期间协商格式或检测服务器能力。
 
-**No Response Parsing:**
-- Problem: `webSocketEvent()` receives response text (lines 52-54) but does not parse JSON or extract results. Serial.printf just prints raw payload.
-- Blocks: Device cannot extract ASR results from server. Results are logged but never processed or displayed.
-- Status: Critical blocker for real use. Must parse JSON response, extract `text` field, and display or store result.
+**没有响应解析:**
+- 问题: `webSocketEvent()` 接收响应文本 (lines 52-54) 但不解析 JSON 或提取结果。Serial.printf 只是打印原始负载。
+- 阻止: 设备无法从服务器提取 ASR 结果。结果被记录但从未处理或显示。
+- 状态: 实际使用的关键阻止因素。必须解析 JSON 响应、提取 `text` 字段并显示或存储结果。
 
-**No Network Error Recovery:**
-- Problem: If WiFi or WebSocket connection fails, device does not attempt to recover. No reconnection state machine.
-- Blocks: Transient network issues require manual device restart.
-- Status: High priority. Implement exponential backoff reconnection strategy.
+**没有网络错误恢复:**
+- 问题: 如果 WiFi 或 WebSocket 连接失败，设备不会尝试恢复。没有重连状态机。
+- 阻止: 瞬态网络问题需要手动设备重启。
+- 状态: 高优先级。实现指数退避重连策略。
 
-## Test Coverage Gaps
+## 测试覆盖率差距
 
-**No Unit Tests:**
-- What's not tested: JSON message formatting, WebSocket event handling, audio format parameters, WiFi connection logic.
-- Files: `src/main.cpp` (entire file has no test coverage).
-- Risk: Regressions in message formatting go unnoticed. Protocol changes break silently.
-- Priority: High - Core protocol logic should have unit tests for JSON serialization, message sequences, and error cases.
+**没有单元测试:**
+- 未测试的内容: JSON 消息格式化、WebSocket 事件处理、音频格式参数、WiFi 连接逻辑。
+- 文件: `src/main.cpp` (整个文件没有测试覆盖率)。
+- 风险: 消息格式化中的回归未被注意。协议更改静默中断。
+- 优先级: 高 - 核心协议逻辑应该有 JSON 序列化、消息序列和错误情况的单元测试。
 
-**No Integration Tests:**
-- What's not tested: Full flow from WiFi connection → WebSocket connection → message exchange → response reception.
-- Files: `src/main.cpp` (lines 63-81 initialization sequence, lines 43-61 event handling).
-- Risk: Device may connect to WebSocket but fail to exchange messages. Silent failures in protocol handshake.
-- Priority: High - Mock server tests needed to verify protocol compliance.
+**没有集成测试:**
+- 未测试的内容: 从 WiFi 连接 → WebSocket 连接 → 消息交换 → 响应接收的完整流程。
+- 文件: `src/main.cpp` (lines 63-81 初始化序列, lines 43-61 事件处理)。
+- 风险: 设备可能连接到 WebSocket 但无法交换消息。协议握手中的静默失败。
+- 优先级: 高 - 需要模拟服务器测试来验证协议合规性。
 
-**No Hardware Tests:**
-- What's not tested: I2S microphone integration, GPIO button polling, actual audio format output.
-- Files: Not yet implemented in source.
-- Risk: When I2S recording is implemented, integration with specific hardware (microphone, button pins) may fail or produce low-quality audio.
-- Priority: Critical - Must be tested with actual ESP32-S3 + microphone hardware before deployment.
+**没有硬件测试:**
+- 未测试的内容: I2S 麦克风集成、GPIO 按钮轮询、实际音频格式输出。
+- 文件: 源代码中尚未实现。
+- 风险: 实现 I2S 录制时，与特定硬件 (麦克风、按钮引脚) 的集成可能失败或产生低质量的音频。
+- 优先级: 关键 - 在部署之前必须使用实际的 ESP32-S3 + 麦克风硬件进行测试。
 
-**No Network Resilience Tests:**
-- What's not tested: WiFi disconnection recovery, server connection drop handling, network latency impact on audio streaming.
-- Files: `src/main.cpp` (lines 70-73 WiFi loop, line 80 reconnect interval).
-- Risk: Device may hang or produce incomplete audio streams in real network conditions.
-- Priority: High - Test WiFi drops, server outages, network latency spikes.
+**没有网络弹性测试:**
+- 未测试的内容: WiFi 断开恢复、服务器连接断开处理、网络延迟对音频流式传输的影响。
+- 文件: `src/main.cpp` (lines 70-73 WiFi 循环, line 80 重连间隔)。
+- 风险: 设备可能在真实网络条件下挂起或产生不完整的音频流。
+- 优先级: 高 - 测试 WiFi 断开、服务器中断、网络延迟峰值。
 
 ---
 
-*Concerns audit: 2026-02-02*
+*问题审计: 2026-02-02*

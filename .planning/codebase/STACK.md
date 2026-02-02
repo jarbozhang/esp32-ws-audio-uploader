@@ -1,84 +1,84 @@
-# Technology Stack
+# 技术栈
 
-**Analysis Date:** 2026-02-02
+**分析日期:** 2026-02-02
 
-## Languages
+## 编程语言
 
-**Primary:**
-- C++ - Firmware code for ESP32-S3 microcontroller
+**主要语言:**
+- C++ - ESP32-S3 微控制器的固件代码
 
-**Secondary:**
-- Arduino (C++ dialect) - Sketches and platform-specific APIs
+**次要语言:**
+- Arduino (C++ 方言) - Arduino 框架和平台特定 API
 
-## Runtime
+## 运行时环境
 
-**Environment:**
-- ESP32-S3 microcontroller (Xtensa LX7 dual-core processor)
-- Arduino framework
+**环境:**
+- ESP32-S3 微控制器 (Xtensa LX7 双核处理器)
+- Arduino 框架
 
-**Package Manager:**
-- PlatformIO - Embedded systems development platform and dependency manager
+**包管理器:**
+- PlatformIO - 嵌入式系统开发平台和依赖管理器
 
-## Frameworks
+## 框架
 
-**Core:**
-- Arduino Framework - Provides hardware abstraction for ESP32
+**核心框架:**
+- Arduino Framework - 为 ESP32 提供硬件抽象层
 
-**Connectivity:**
-- WiFi (built-in to ESP32)
-- WebSockets Client Library - `links2004/WebSockets@^2.4.1`
+**网络连接:**
+- WiFi (ESP32 内置)
+- WebSockets 客户端库 - `links2004/WebSockets@^2.4.1`
 
-**Audio:**
-- I2S (Inter-IC Sound) - Hardware protocol for microphone communication (planned, not yet implemented)
+**音频:**
+- I2S (Inter-IC Sound) - 麦克风通信的硬件协议 (已规划，尚未实现)
 
-## Key Dependencies
+## 关键依赖
 
-**Critical:**
-- `links2004/WebSockets@^2.4.1` - WebSocket client library for ESP32, enables bidirectional communication with WebSocket ASR server
+**核心依赖:**
+- `links2004/WebSockets@^2.4.1` - ESP32 的 WebSocket 客户端库，支持与 WebSocket ASR 服务器的双向通信
 
-**Hardware Libraries:**
-- WiFi - Built-in ESP32 WiFi capability
-- Serial - Built-in UART for debugging
+**硬件库:**
+- WiFi - ESP32 内置 WiFi 功能
+- Serial - 内置 UART 用于调试
 
-## Configuration
+## 配置
 
-**Environment:**
-- Configured via `platformio.ini`
-- WiFi credentials: SSID and password (currently placeholders in source)
-- WebSocket server address and port hardcoded in source
-- Authentication token hardcoded in source
+**环境配置:**
+- 通过 `platformio.ini` 配置
+- WiFi 凭证: SSID 和密码 (当前为源码中的占位符)
+- WebSocket 服务器地址和端口硬编码在源码中
+- 认证令牌硬编码在源码中
 
-**Build:**
-- `platformio.ini` - PlatformIO project configuration
-  - Platform: espressif32
-  - Board: esp32-s3-devkitc-1
-  - Monitor speed: 115200 baud
-  - Build flags: `-DARDUINO_USB_CDC_ON_BOOT=1` (enables USB serial over CDC)
+**构建配置:**
+- `platformio.ini` - PlatformIO 项目配置
+  - 平台: espressif32
+  - 开发板: esp32-s3-devkitc-1
+  - 监视器波特率: 115200
+  - 构建标志: `-DARDUINO_USB_CDC_ON_BOOT=1` (启用通过 CDC 的 USB 串口)
 
-## Platform Requirements
+## 平台要求
 
-**Development:**
-- PlatformIO CLI or VS Code PlatformIO extension
-- USB connection to ESP32-S3 development board
+**开发环境:**
+- PlatformIO CLI 或 VS Code PlatformIO 扩展
+- USB 连接到 ESP32-S3 开发板
 
-**Hardware:**
-- ESP32-S3-DevKitC-1 board
-- I2S microphone (planned for future implementation)
-- WiFi network access
+**硬件:**
+- ESP32-S3-DevKitC-1 开发板
+- I2S 麦克风 (计划在未来实现)
+- WiFi 网络接入
 
-**Production:**
-- ESP32-S3 module or development board
-- WiFi connectivity to network
-- Access to Mac WebSocket ASR server at known IP and port 8765
+**生产环境:**
+- ESP32-S3 模块或开发板
+- WiFi 网络连接
+- 访问已知 IP 和端口 8765 的 Mac WebSocket ASR 服务器
 
-## Audio Configuration
+## 音频配置
 
-**Specifications:**
-- Sample Rate: 16 kHz
-- Channels: 1 (mono)
-- Bit Depth: 16-bit
-- Format: PCM signed 16-bit little-endian (pcm_s16le)
+**规格参数:**
+- 采样率: 16 kHz
+- 声道: 1 (单声道)
+- 位深度: 16-bit
+- 格式: PCM 有符号 16 位小端序 (pcm_s16le)
 
 ---
 
-*Stack analysis: 2026-02-02*
+*技术栈分析: 2026-02-02*

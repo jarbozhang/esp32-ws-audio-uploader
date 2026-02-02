@@ -1,110 +1,110 @@
-# Codebase Structure
+# 代码库结构
 
-**Analysis Date:** 2026-02-02
+**分析日期:** 2026-02-02
 
-## Directory Layout
+## 目录布局
 
 ```
 esp32-ws-audio-uploader/
-├── src/                    # Firmware source code
-│   └── main.cpp           # Single entry point with all application logic
-├── platformio.ini         # PlatformIO build configuration
-├── README.md              # Project overview and protocol documentation
-├── SPEC.md                # Reference to Obsidian spec document
-├── LICENSE                # MIT license
-└── .gitignore             # Excludes .pio and .vscode directories
+├── src/                    # 固件源代码
+│   └── main.cpp           # 单一入口点，包含所有应用逻辑
+├── platformio.ini         # PlatformIO 构建配置
+├── README.md              # 项目概述和协议文档
+├── SPEC.md                # Obsidian 规格文档的引用
+├── LICENSE                # MIT 许可证
+└── .gitignore             # 排除 .pio 和 .vscode 目录
 ```
 
-## Directory Purposes
+## 目录用途
 
 **src/:**
-- Purpose: Arduino/C++ firmware source code
-- Contains: Main application entry point and protocol implementation
-- Key files: `main.cpp` - Complete application (93 lines)
+- 用途: Arduino/C++ 固件源代码
+- 包含: 主应用入口点和协议实现
+- 关键文件: `main.cpp` - 完整应用 (93 行)
 
-## Key File Locations
+## 关键文件位置
 
-**Entry Points:**
-- `src/main.cpp`: Single C++ file containing `setup()` and `loop()` Arduino entry points
+**入口点:**
+- `src/main.cpp`: 单一 C++ 文件，包含 `setup()` 和 `loop()` Arduino 入口点
 
-**Configuration:**
-- `platformio.ini`: ESP32-S3 board selection, build flags, library dependencies
+**配置:**
+- `platformio.ini`: ESP32-S3 开发板选择、构建标志、库依赖
 
-**Documentation:**
-- `README.md`: Protocol specification and project purpose
-- `SPEC.md`: Link to external Obsidian specification
+**文档:**
+- `README.md`: 协议规范和项目目的
+- `SPEC.md`: 外部 Obsidian 规格的链接
 
-**Build Artifacts:**
-- `.pio/`: Generated build output (gitignored)
-- `.vscode/`: IDE settings (gitignored)
+**构建产物:**
+- `.pio/`: 生成的构建输出 (被 gitignore)
+- `.vscode/`: IDE 设置 (被 gitignore)
 
-## Naming Conventions
+## 命名约定
 
-**Files:**
-- `main.cpp`: Single source file (Arduino standard)
-- `platformio.ini`: Standard PlatformIO config name
+**文件:**
+- `main.cpp`: 单一源文件 (Arduino 标准)
+- `platformio.ini`: 标准 PlatformIO 配置名称
 
-**Functions:**
-- camelCase: `sendStart()`, `sendEnd()`, `webSocketEvent()`, `setup()`, `loop()`
+**函数:**
+- 小驼峰命名: `sendStart()`, `sendEnd()`, `webSocketEvent()`, `setup()`, `loop()`
 
-**Variables:**
-- Constants: UPPERCASE_SNAKE_CASE: `WIFI_SSID`, `WS_HOST`, `WS_PORT`, `SAMPLE_RATE`, `CHANNELS`, `BIT_DEPTH`, `AUTH_TOKEN`
-- Static module: camelCase: `reqId`, `ws`
+**变量:**
+- 常量: 大写蛇形命名: `WIFI_SSID`, `WS_HOST`, `WS_PORT`, `SAMPLE_RATE`, `CHANNELS`, `BIT_DEPTH`, `AUTH_TOKEN`
+- 静态模块变量: 小驼峰命名: `reqId`, `ws`
 
-**Types:**
-- Arduino/WebSocket types from libraries: `WStype_t`, `WebSocketsClient`
+**类型:**
+- 来自库的 Arduino/WebSocket 类型: `WStype_t`, `WebSocketsClient`
 
-## Where to Add New Code
+## 在何处添加新代码
 
-**New Feature (e.g., button input, I2S recording):**
-- Primary code: Add functions to `src/main.cpp` (or create separate `.cpp/.h` pair if exceeds 200 lines)
-- Tests: Create `test/` directory with corresponding test files (not yet present)
+**新功能 (例如按钮输入、I2S 录制):**
+- 主要代码: 向 `src/main.cpp` 添加函数 (或如果超过 200 行则创建单独的 `.cpp/.h` 文件对)
+- 测试: 创建 `test/` 目录，包含相应的测试文件 (尚不存在)
 
-**New Module/Component:**
-- Create separate `.h` header file in `src/` with declarations
-- Create corresponding `.cpp` implementation file in `src/`
-- Include from `main.cpp`
+**新模块/组件:**
+- 在 `src/` 中创建单独的 `.h` 头文件，包含声明
+- 在 `src/` 中创建相应的 `.cpp` 实现文件
+- 从 `main.cpp` 中包含
 
-**Utilities/Helpers:**
-- Shared message formatting: Add functions below `sendStart()`/`sendEnd()` in `src/main.cpp`
-- WiFi utilities: Create `src/wifi_utils.h/cpp` if WiFi logic grows beyond setup
-- Audio utilities: Create `src/audio_utils.h/cpp` for I2S and sample rate management
+**工具/辅助函数:**
+- 共享消息格式化: 在 `src/main.cpp` 的 `sendStart()`/`sendEnd()` 下方添加函数
+- WiFi 工具: 如果 WiFi 逻辑增长超出设置范围，创建 `src/wifi_utils.h/cpp`
+- 音频工具: 为 I2S 和采样率管理创建 `src/audio_utils.h/cpp`
 
-**Configuration:**
-- Hardcoded parameters: Add static const globals at top of `src/main.cpp` (lines 6-20)
-- Build-time settings: Add to `platformio.ini` build_flags or new ini env section
+**配置:**
+- 硬编码参数: 在 `src/main.cpp` 顶部添加静态常量全局变量 (lines 6-20)
+- 构建时设置: 添加到 `platformio.ini` 的 build_flags 或新的 ini 环境部分
 
-## Special Directories
+## 特殊目录
 
-**Build Output (.pio):**
-- Purpose: PlatformIO build artifacts, compiled binaries, dependencies
-- Generated: Yes (automatically by PlatformIO)
-- Committed: No (gitignored)
+**构建输出 (.pio):**
+- 用途: PlatformIO 构建产物、编译的二进制文件、依赖项
+- 生成: 是 (由 PlatformIO 自动生成)
+- 提交: 否 (被 gitignore)
 
-**IDE Configuration (.vscode):**
-- Purpose: Visual Studio Code workspace settings and extensions recommendations
-- Generated: Manual (user-configured)
-- Committed: No (gitignored)
+**IDE 配置 (.vscode):**
+- 用途: Visual Studio Code 工作区设置和扩展推荐
+- 生成: 手动 (用户配置)
+- 提交: 否 (被 gitignore)
 
-## Extending the Codebase
+## 扩展代码库
 
-**For Button Input (PTT):**
-1. Add GPIO pin constant at top of `main.cpp`
-2. Add `void initButton()` in `setup()` after WiFi
-3. Add `bool readButton()` helper function
-4. Add PTT state tracking logic in `loop()`
+**添加按钮输入 (PTT):**
+1. 在 `main.cpp` 顶部添加 GPIO 引脚常量
+2. 在 WiFi 之后的 `setup()` 中添加 `void initButton()`
+3. 添加 `bool readButton()` 辅助函数
+4. 在 `loop()` 中添加 PTT 状态跟踪逻辑
 
-**For I2S Audio Recording:**
-1. Create `src/audio_capture.h/cpp` for I2S driver abstraction
-2. Include in `main.cpp` and call initialization in `setup()`
-3. Add `uint8_t* readAudioFrame()` function
-4. Replace delay in `loop()` with `if (pttPressed) { streamAudioFrames(); }`
+**添加 I2S 音频录制:**
+1. 创建 `src/audio_capture.h/cpp` 用于 I2S 驱动抽象
+2. 在 `main.cpp` 中包含并在 `setup()` 中调用初始化
+3. 添加 `uint8_t* readAudioFrame()` 函数
+4. 用 `if (pttPressed) { streamAudioFrames(); }` 替换 `loop()` 中的延迟
 
-**For Message Parsing:**
-1. Create `src/ws_protocol.h/cpp` for JSON message handling
-2. Add `void parseServerResult(const char* json)` function
-3. Call from `webSocketEvent()` in TEXT case
+**添加消息解析:**
+1. 创建 `src/ws_protocol.h/cpp` 用于 JSON 消息处理
+2. 添加 `void parseServerResult(const char* json)` 函数
+3. 在 TEXT 情况下从 `webSocketEvent()` 调用
 
 ---
 
-*Structure analysis: 2026-02-02*
+*结构分析: 2026-02-02*
