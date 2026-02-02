@@ -9,7 +9,13 @@
 static const char *WIFI_SSID = "YOUR_WIFI";
 static const char *WIFI_PASS = "YOUR_PASS";
 
-static const char *WS_HOST = "jiabos-macbook-pro-2.local"; // Mac mDNS hostname (no IP scanning)
+// Mac mDNS hostname (no IP scanning). Recommend configuring this via build_flags
+// (e.g., -DWS_HOSTNAME=\"jiabos-macbook-pro-2.local\") to avoid hardcoding.
+#ifndef WS_HOSTNAME
+#define WS_HOSTNAME "jiabos-macbook-pro-2.local"
+#endif
+
+static const char *WS_HOST = WS_HOSTNAME;
 static const uint16_t WS_PORT = 8765;
 static const char *WS_PATH = "/ws";
 
@@ -277,7 +283,8 @@ void loop() {
       Serial.println("Recording start");
       recording = true;
       recordStartMs = millis();
-      pendingStop = pendingPermission = pendingFailure = 0; // optional: keep pending from earlier? currently reset
+      // Optional: keep pending from earlier; currently reset on each recording.
+      pendingStop = pendingPermission = pendingFailure = 0;
       sendStart();
     }
   }
