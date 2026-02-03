@@ -1,110 +1,142 @@
 # 代码库结构
 
-**分析日期:** 2026-02-02
+**分析日期:** 2026-02-03
 
 ## 目录布局
 
 ```
 esp32-ws-audio-uploader/
-├── src/                    # 固件源代码
-│   └── main.cpp           # 单一入口点，包含所有应用逻辑
+├── src/                    # C++ 源代码
+│   └── main.cpp           # 唯一的应用代码文件（完整实现）
 ├── platformio.ini         # PlatformIO 构建配置
-├── README.md              # 项目概述和协议文档
-├── SPEC.md                # Obsidian 规格文档的引用
-├── LICENSE                # MIT 许可证
-└── .gitignore             # 排除 .pio 和 .vscode 目录
+├── README.md              # 项目说明和快速开始指南
+├── SPEC.md                # 协议规范文档
+├── LICENSE                # 许可证文件
+└── .gitignore             # Git 忽略规则
 ```
 
 ## 目录用途
 
-**src/:**
-- 用途: Arduino/C++ 固件源代码
-- 包含: 主应用入口点和协议实现
-- 关键文件: `main.cpp` - 完整应用 (93 行)
+**src/ 目录:**
+- 用途: 包含所有 C++ 源代码
+- 包含: Arduino 草图和库代码
+- 关键文件: `main.cpp`
 
 ## 关键文件位置
 
 **入口点:**
-- `src/main.cpp`: 单一 C++ 文件，包含 `setup()` 和 `loop()` Arduino 入口点
+- `src/main.cpp`: Arduino 主文件，包含 `setup()` 和 `loop()` 函数
 
 **配置:**
-- `platformio.ini`: ESP32-S3 开发板选择、构建标志、库依赖
+- `platformio.ini`: PlatformIO 构建配置，指定硬件平台、库依赖、编译标志
 
 **文档:**
-- `README.md`: 协议规范和项目目的
-- `SPEC.md`: 外部 Obsidian 规格的链接
-
-**构建产物:**
-- `.pio/`: 生成的构建输出 (被 gitignore)
-- `.vscode/`: IDE 设置 (被 gitignore)
+- `README.md`: 用户说明、配置步骤、协议概述
+- `SPEC.md`: 详细的 WebSocket 消息协议规范
 
 ## 命名约定
 
 **文件:**
-- `main.cpp`: 单一源文件 (Arduino 标准)
-- `platformio.ini`: 标准 PlatformIO 配置名称
+- 单一主文件模式: `main.cpp`（Arduino 约定）
+- 配置文件: `platformio.ini`、`.gitignore`
 
-**函数:**
-- 小驼峰命名: `sendStart()`, `sendEnd()`, `webSocketEvent()`, `setup()`, `loop()`
+**目录:**
+- `src/` - Arduino/PlatformIO 标准目录
+- `.git/` - Git 版本控制（自动生成）
+- `.claude/` - Claude 编辑器配置（自动生成）
 
-**变量:**
-- 常量: 大写蛇形命名: `WIFI_SSID`, `WS_HOST`, `WS_PORT`, `SAMPLE_RATE`, `CHANNELS`, `BIT_DEPTH`, `AUTH_TOKEN`
-- 静态模块变量: 小驼峰命名: `reqId`, `ws`
+**代码中的命名（C++）:**
+- **常量:** 全大写带下划线（如 `WIFI_SSID`、`SAMPLE_RATE`、`MAX_RECORD_MS`）
+- **全局变量:** 前缀 `static`，驼峰或下划线命名（如 `wsConnected`、`recording`、`currentReqId`）
+- **函数:** 驼峰命名法（如 `setupAudio()`、`recordOneChunkAndSend()`、`playPendingBeeps()`）
+- **结构体/Enum:** 驼峰命名（如 `BeepKind`、`BeepPattern`）
+- **数组:** 使用 `s` 前缀表示字符串（如 `recentIds[]`）
 
-**类型:**
-- 来自库的 Arduino/WebSocket 类型: `WStype_t`, `WebSocketsClient`
+## 添加新代码的位置
 
-## 在何处添加新代码
+**新功能:**
+- 位置: `src/main.cpp` 中的合适逻辑位置
+- 示例：新的按钮处理 → 在 `loop()` 函数的按钮轮询部分添加
+- 示例：新的消息类型处理 → 在 `handleHookEvent()` 或 `webSocketEvent()` 中添加
 
-**新功能 (例如按钮输入、I2S 录制):**
-- 主要代码: 向 `src/main.cpp` 添加函数 (或如果超过 200 行则创建单独的 `.cpp/.h` 文件对)
-- 测试: 创建 `test/` 目录，包含相应的测试文件 (尚不存在)
+**新的 Beep 类型:**
+- 添加 `BeepKind` 枚举值
+- 在 `patternFor()` switch 语句中定义新的频率/持续时间
+- 在 `queueBeep()` 中添加对应的 pending 计数器逻辑
+- 在 `playPendingBeeps()` 的优先级顺序中定位
 
-**新模块/组件:**
-- 在 `src/` 中创建单独的 `.h` 头文件，包含声明
-- 在 `src/` 中创建相应的 `.cpp` 实现文件
-- 从 `main.cpp` 中包含
+**新的 Hook 事件类型:**
+- 在 `handleHookEvent()` 的事件名称检查中添加 `strcmp()` 分支
+- 决定触发哪种 Beep 或其他动作
+- 将动作传递给 `queueBeep()` 或其他处理函数
 
-**工具/辅助函数:**
-- 共享消息格式化: 在 `src/main.cpp` 的 `sendStart()`/`sendEnd()` 下方添加函数
-- WiFi 工具: 如果 WiFi 逻辑增长超出设置范围，创建 `src/wifi_utils.h/cpp`
-- 音频工具: 为 I2S 和采样率管理创建 `src/audio_utils.h/cpp`
+**WebSocket 协议扩展:**
+- 修改 `sendStart()` 改变启动消息体
+- 修改 `webSocketEvent()` 的 WStype_TEXT 处理新的响应类型
+- 修改 `handleHookEvent()` 处理新的 hook 字段
 
-**配置:**
-- 硬编码参数: 在 `src/main.cpp` 顶部添加静态常量全局变量 (lines 6-20)
-- 构建时设置: 添加到 `platformio.ini` 的 build_flags 或新的 ini 环境部分
+**音频格式变更:**
+- 修改 `SAMPLE_RATE`、`CHANNELS`、`BIT_DEPTH`、`FORMAT` 常量
+- 重新计算 `CHUNK_SAMPLES` 和 `CHUNK_BYTES`（保持 20ms 窗口）
+- 更新缓冲区大小（如果需要）
 
 ## 特殊目录
 
-**构建输出 (.pio):**
-- 用途: PlatformIO 构建产物、编译的二进制文件、依赖项
-- 生成: 是 (由 PlatformIO 自动生成)
-- 提交: 否 (被 gitignore)
+**src/:**
+- 用途: Arduino/PlatformIO 标准源目录
+- 生成: 否
+- 提交: 是（仅 `main.cpp`）
 
-**IDE 配置 (.vscode):**
-- 用途: Visual Studio Code 工作区设置和扩展推荐
-- 生成: 手动 (用户配置)
-- 提交: 否 (被 gitignore)
+**.git/:**
+- 用途: Git 版本控制元数据
+- 生成: 是（自动）
+- 提交: 否（自动忽略）
 
-## 扩展代码库
+**.claude/:**
+- 用途: Claude 编辑器本地配置
+- 生成: 是（自动）
+- 提交: 否（在 .gitignore 中）
 
-**添加按钮输入 (PTT):**
-1. 在 `main.cpp` 顶部添加 GPIO 引脚常量
-2. 在 WiFi 之后的 `setup()` 中添加 `void initButton()`
-3. 添加 `bool readButton()` 辅助函数
-4. 在 `loop()` 中添加 PTT 状态跟踪逻辑
+## 文件大小和复杂度
 
-**添加 I2S 音频录制:**
-1. 创建 `src/audio_capture.h/cpp` 用于 I2S 驱动抽象
-2. 在 `main.cpp` 中包含并在 `setup()` 中调用初始化
-3. 添加 `uint8_t* readAudioFrame()` 函数
-4. 用 `if (pttPressed) { streamAudioFrames(); }` 替换 `loop()` 中的延迟
+**src/main.cpp:** 308 行
+- 编译指令和包含: 行 1-6
+- 用户配置段: 行 8-23
+- 音频参数常量: 行 25-33
+- WebSocket 全局变量: 行 38
+- Beep 定义和辅助函数: 行 40-103
+- 录音状态变量: 行 65-72
+- Hook 去重环形缓冲区: 行 74-84
+- Beep 排队/播放函数: 行 86-132
+- 请求 ID 生成: 行 134-137
+- WebSocket 消息构建: 行 141-165
+- Hook 事件处理: 行 167-185
+- WebSocket 事件回调: 行 187-223
+- 硬件初始化: 行 225-237
+- 音频录制和发送: 行 239-250
+- Arduino setup: 行 252-272
+- Arduino loop: 行 274-307
 
-**添加消息解析:**
-1. 创建 `src/ws_protocol.h/cpp` 用于 JSON 消息处理
-2. 添加 `void parseServerResult(const char* json)` 函数
-3. 在 TEXT 情况下从 `webSocketEvent()` 调用
+## 代码组织模式
+
+**全局作用域:**
+- 配置常量（上部）
+- WebSocket 客户端实例（行 38）
+- 枚举和结构体定义（行 40-51）
+- 状态变量（行 65-84）
+
+**函数层次:**
+- 辅助工具函数 (`seenId`, `queueBeep`, `playPendingBeeps`)
+- 协议函数 (`sendStart`, `sendEnd`, `handleHookEvent`)
+- 事件回调 (`webSocketEvent`)
+- 硬件函数 (`setupAudio`, `recordOneChunkAndSend`)
+- Arduino 生命周期 (`setup`, `loop`)
+
+**设计考虑:**
+- 所有函数标记为 `static`（文件作用域），避免命名冲突
+- 使用 `static` 局部缓冲区（如 `buf[CHUNK_SAMPLES]` 在 `recordOneChunkAndSend()` 中）优化性能
+- 使用 volatile 关键字修饰由中断修改的状态（如 `volatile bool wsConnected`）
 
 ---
 
-*结构分析: 2026-02-02*
+*结构分析: 2026-02-03*

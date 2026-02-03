@@ -1,115 +1,153 @@
 # 编码规范
 
-**分析日期:** 2026-02-02
+**分析日期：** 2026-02-03
 
-## 命名模式
+## 命名规范
 
-**文件:**
-- C++ 源文件: `main.cpp` (蛇形命名)
-- 配置文件: `platformio.ini` (小写加点)
+**文件命名：**
+- 单个主文件：`main.cpp` - 应用程序入口
+- 约定：使用小写字母，单词之间用下划线分隔（如果需要多文件时）
 
-**函数:**
-- 函数名使用小驼峰命名: `sendStart()`, `sendEnd()`, `webSocketEvent()`, `setup()`, `loop()`
-- 回调函数遵循 WebSocket 库约定: `webSocketEvent()`
-- Arduino 生命周期函数: `setup()`, `loop()` (Arduino 框架要求)
+**函数命名：**
+- 驼峰命名法（camelCase）：`setupAudio()`、`recordOneChunkAndSend()`、`sendStart()`
+- 静态函数前缀 `static`：`static void setupAudio()`、`static bool recordOneChunkAndSend()`
+- 用途清晰的动词开头：`setup*`、`send*`、`record*`、`play*`、`queue*`、`handle*`
 
-**变量:**
-- 局部变量和函数参数使用小驼峰命名: `reqId`, `chunks`, `type`, `payload`, `length`
-- 常量使用大写蛇形命名: `WIFI_SSID`, `WIFI_PASS`, `WS_HOST`, `WS_PORT`, `WS_PATH`, `AUTH_TOKEN`, `SAMPLE_RATE`, `CHANNELS`, `BIT_DEPTH`
-- 全局变量: 小驼峰命名: `ws`, `reqId`
+**变量命名：**
+- 全局变量/静态变量：使用 camelCase，`wsConnected`、`recording`、`currentReqId`
+- 局部变量：camelCase，`recordStartMs`、`micCfg`、`ok`
+- 常量：全大写 + 下划线：`MAX_RECORD_MS`、`SAMPLE_RATE`、`CHUNK_SAMPLES`、`WS_HOSTNAME`
+- 缓冲区/数组：描述性名称，`buf`（局部缓冲区）、`recentIds`（ID去重环）
 
-**类型:**
-- 直接使用 C++ 标准类型: `String`, `uint8_t`, `size_t`, `uint16_t`, `uint32_t`, `WStype_t`
+**类型命名：**
+- 枚举类型：PascalCase，`BeepKind`、`WStype_t`（来自库）
+- 结构体：PascalCase，`BeepPattern`
+- 枚举值：全大写 + 下划线，`BEEP_STOP`、`BEEP_PERMISSION`、`BEEP_FAILURE`、`WStype_DISCONNECTED`
 
 ## 代码风格
 
-**格式化:**
-- 未配置显式格式化工具 (无 .prettierrc、eslint 或 clang-format 文件)
-- 观察到的风格:
-  - 2 空格缩进 (在 switch 语句、函数体中观察到)
-  - 控制结构的闭合大括号后无尾随分号
-  - 同行大括号 (1TBS 风格): `if (...) { ... }`
-  - 使用 `+` 运算符进行字符串拼接 (Arduino String 类)
+**格式化：**
+- 缩进：2空格（Arduino/PlatformIO 默认）
+- 大括号：K&R 风格（开括号在同一行）
+- 行长度：无严格限制，但一般保持可读性
 
-**代码检查:**
-- 未找到代码检查配置
-- 代码风格由 Arduino/PlatformIO 框架约定隐式强制执行
+**注释：**
+- 中文和英文混用，关键概念用英文
+- 行注释用 `//`，块注释用 `/* */`
+- 配置段落用分隔符：`// ========= User config =========`
+- 实现细节注释简洁明了，例如：
+  ```cpp
+  // Chunking: 20ms @16kHz => 320 samples => 640 bytes (s16)
+  // Optional: keep pending from earlier; currently reset on each recording.
+  // Priority: permission > failure > stop
+  ```
 
 ## 导入组织
 
-**顺序:**
-1. Arduino 框架头文件: `#include <Arduino.h>`
-2. 标准库头文件: `#include <WiFi.h>`
-3. 第三方库头文件: `#include <WebSocketsClient.h>`
-
-**路径别名:**
-- 不适用 (C++ 包含，而非模块导入)
+**包含顺序：**
+1. Arduino 标准库：`#include <Arduino.h>`
+2. 通信库：`#include <WiFi.h>`、`#include <WebSocketsClient.h>`
+3. 数据处理库：`#include <ArduinoJson.h>`
+4. 硬件库：`#include <M5Unified.h>`
 
 ## 错误处理
 
-**模式:**
-- 阻塞同步检查: `while (WiFi.status() != WL_CONNECTED)` 配合轮询
-- 错误状态的串口日志: `Serial.println("WS disconnected")`
-- 未观察到异常处理 (Arduino/嵌入式环境)
-- 回调通过事件类型检查处理错误状态: `webSocketEvent()` 中的 `WStype_DISCONNECTED` 情况
-- 无 try-catch 或错误传播机制 (嵌入式系统典型做法)
+**模式：**
+- 布尔返回值表示成功/失败：`bool recordOneChunkAndSend()`、`bool M5.Mic.record()`
+- 显式检查连接状态：`if (!wsConnected) return false;`
+- 显式检查资源可用性：`if (!M5.Mic.isEnabled()) return false;`
+- 简单错误上报：`Serial.printf()`
+- 无异常处理（嵌入式 C++ 常见做法）
+
+**常见检查：**
+```cpp
+// 路径 src/main.cpp - 行 243-246
+if (!M5.Mic.isEnabled()) return false;
+if (!wsConnected) return false;
+
+bool ok = M5.Mic.record(buf, CHUNK_SAMPLES, SAMPLE_RATE);
+if (!ok) return false;
+```
 
 ## 日志记录
 
-**框架:** Arduino Serial 库 (通过 USB CDC 的控制台输出)
+**框架：** `Serial` 类（Arduino 标准）
 
-**模式:**
-- 连接状态: `Serial.println()` 用于主要状态变化 (WiFi 已连接、WS 已连接/已断开)
-- 调试信息: `Serial.printf()` 用于格式化输出 (WS 消息、二进制数据长度)
-- 输出格式: 带数值的人类可读状态消息
-- 无结构化日志记录或日志级别
+**日志模式：**
+- 状态报告：`Serial.println("WiFi OK, IP=");`
+- 格式化输出：`Serial.printf("WS json: %s\n", s.c_str());`
+- 调试信息：`Serial.print(".");`（点号进度指示）
+- 路径：`src/main.cpp` 行 260-267、206、217、260-267
 
-## 注释
+**日志时机：**
+- WiFi 连接状态变化
+- WebSocket 连接/断开
+- 录音开始/停止
+- JSON 解析错误或成功接收
 
-**何时添加注释:**
-- TODO 注释标记未完成的功能: `// TODO: replace with your WiFi + server`, `// TODO: implement PTT + I2S recording loop`
-- 内联注释解释非显而易见的部分: `// In MVP we don't actually record from I2S yet.`
-- 节注释划分主要配置区域: `// Audio settings (MVP constants)`
+## 设计模式
 
-**JSDoc/TSDoc:**
-- 不适用 (C++, 无 JSDoc/TSDoc 约定)
-- 需要时通过内联注释进行函数文档
+**队列和延迟处理：**
+- 蜂鸣音在录音时排队，停止后统一播放
+- 目的：避免在使用麦克风时切换到扬声器
+- 路径：`src/main.cpp` 行 69-73、86-103、105-132、299-300
 
-## 函数设计
+**去重机制（Ring Buffer）：**
+```cpp
+// 路径 src/main.cpp - 行 74-84
+static String recentIds[16];
+static uint8_t recentIdx = 0;
+static bool seenId(const String &id) {
+  if (!id.length()) return false;
+  for (auto &s : recentIds) {
+    if (s == id) return true;
+  }
+  recentIds[recentIdx++ % 16] = id;
+  return false;
+}
+```
 
-**大小:**
-- 小而专注的函数: `sendStart()` (9 行), `sendEnd()` (5 行), `webSocketEvent()` (16 行)
-- Arduino 生命周期函数: `setup()` (19 行), `loop()` (7 行)
-
-**参数:**
-- 回调函数由库签名决定: `void webSocketEvent(WStype_t type, uint8_t * payload, size_t length)`
-- 辅助函数采用特定参数: `sendEnd(uint32_t chunks)` 用于块计数
-
-**返回值:**
-- 事件处理器和生命周期方法的 `void` 返回类型
-- 不使用返回值进行错误处理 (事件驱动模型)
-
-## 模块设计
-
-**导出:**
-- 单文件架构: `src/main.cpp` 包含所有应用代码
-- Arduino 框架入口点: `setup()` 和 `loop()` 被隐式导出/要求
-- 全局 WebSocket 客户端实例: `WebSocketsClient ws` 可被事件处理器和生命周期函数访问
-
-**Barrel 文件:**
-- 不适用 (单文件 Arduino 草图架构)
+**请求 ID 生成：**
+```cpp
+// 路径 src/main.cpp - 行 134-137
+static String makeReqId() {
+  return String("req-") + String((uint32_t)ESP.getEfuseMac(), HEX)
+         + String("-") + String(millis());
+}
+```
 
 ## 配置管理
 
-**常量:**
-- 文件顶部的硬编码凭证 (MVP 模式): `WIFI_SSID`, `WIFI_PASS`, `AUTH_TOKEN`
-- 分组的音频格式常量: `SAMPLE_RATE`, `CHANNELS`, `BIT_DEPTH`
-- 服务器连接常量: `WS_HOST`, `WS_PORT`, `WS_PATH`
+**用户配置段（顶部）：**
+- 位置：`src/main.cpp` 行 8-23
+- WiFi SSID/密码：`WIFI_SSID`、`WIFI_PASS`（需要用户编辑）
+- 认证令牌：`AUTH_TOKEN`（必须与 Mac 服务器匹配）
+- 主机名：`WS_HOSTNAME`（支持编译时标志覆盖）
 
-**说明:**
-- 注释指出需要用配置替换硬编码值的 TODO
-- 未检测到环境变量支持或外部配置文件
+**音频格式常量：**
+- 采样率、通道数、位深度、格式（PCM S16LE）
+- 块大小计算：20ms @ 16kHz 单通道 = 320 样本 = 640 字节
+- 位置：`src/main.cpp` 行 25-33
+
+**安全常量：**
+- 最大录音时长：`MAX_RECORD_MS = 8000`（8秒保护）
+
+## 函数组织
+
+**静态函数与全局状态：**
+- 大多数函数使用 `static` 限制作用域（模块内可见）
+- 全局变量集中在顶部：`wsConnected`、`recording`、`recordStartMs` 等
+- 函数按逻辑分组：配置→发送→处理→主循环
+
+**职责分离：**
+- `setupAudio()`：初始化硬件
+- `sendStart()`、`sendEnd()`：协议消息
+- `recordOneChunkAndSend()`：音频流处理
+- `queueBeep()`、`playPendingBeeps()`：音频反馈
+- `handleHookEvent()`：事件处理
+- `webSocketEvent()`：底层 WebSocket 回调
+- `setup()`、`loop()`：Arduino 标准入口
 
 ---
 
-*规范分析: 2026-02-02*
+*编码规范分析日期：2026-02-03*

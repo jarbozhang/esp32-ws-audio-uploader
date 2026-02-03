@@ -1,205 +1,246 @@
 # 测试模式
 
-**分析日期:** 2026-02-02
+**分析日期：** 2026-02-03
 
 ## 测试框架
 
-**运行器:**
-- 未检测到测试框架
-- Arduino/PlatformIO 项目通常使用平台特定的测试 (例如 PlatformIO 单元测试)
-- 当前项目: MVP 阶段，未配置测试基础设施
+**运行器：**
+- 未使用标准单元测试框架
+- 目标平台为嵌入式设备（ESP32-S3），不适合传统 xUnit 框架
+- 测试方式：手动集成测试 + 串口监控
 
-**断言库:**
-- 不适用
+**断言库：**
+- 无（嵌入式应用直接使用硬件）
 
-**运行命令:**
+**运行命令：**
 ```bash
-# 当前测试方法: 通过串口输出的手动验证
-# 使用 PlatformIO 添加单元测试:
-pio test                # 运行所有测试
-pio test --environment esp32-s3  # 为特定环境运行测试
-```
+# PlatformIO 编译和上传
+pio run -t upload                    # 编译并刷写固件
 
-**配置文件:**
-- 未找到 `platformio.ini` 测试配置
-- 添加测试: 创建 `test/` 目录并配置 `platformio.ini`
+# 监控串口输出
+pio device monitor                   # 波特率 115200（platformio.ini 定义）
+
+# 清理构建
+pio run -t clean                     # 清除构建文件
+```
 
 ## 测试文件组织
 
-**当前状态:**
-- 不存在测试文件
-- 单文件架构: `src/main.cpp`
-- 适合在专用 `test/` 目录中添加测试
+**位置：**
+- 当前无专门测试文件
+- 位置：`src/main.cpp` - 单个应用文件，包含全部逻辑
 
-**推荐位置:**
-- `test/test_*.cpp` - 遵循 PlatformIO 约定的单元测试文件
-- 项目根级别的 `test/` 目录
+**命名：**
+- 不适用（未分离测试）
 
-**命名约定:**
+**结构：**
 ```
-test/test_websocket.cpp
-test/test_wifi_connection.cpp
-test/test_message_format.cpp
+src/
+└── main.cpp           # 唯一源文件，包含所有功能和测试点
 ```
 
 ## 测试结构
 
-**Arduino 单元测试的建议模式:**
+**手动集成测试点：**
 
 ```cpp
-#include <Arduino.h>
-#include <unity.h>
+// 路径 src/main.cpp - WiFi 连接测试 (行 258-267)
+Serial.begin(115200);
+delay(200);
+setupAudio();
 
-// 测试设置
-void setUp(void) {
-  // 每个测试之前
+WiFi.mode(WIFI_STA);
+WiFi.begin(WIFI_SSID, WIFI_PASS);
+Serial.print("WiFi connecting");
+while (WiFi.status() != WL_CONNECTED) {
+  delay(500);
+  Serial.print(".");
 }
+Serial.println();
+Serial.print("WiFi OK, IP=");
+Serial.println(WiFi.localIP());
 
-// 测试清理
-void tearDown(void) {
-  // 每个测试之后
-}
-
-// 测试用例
-void test_message_format(void) {
-  TEST_ASSERT_EQUAL(expected, actual);
-}
-
-// 主测试运行器 (由 PlatformIO 自动生成)
-void runUnityTests(void) {
-  UNITY_BEGIN();
-  RUN_TEST(test_message_format);
-  UNITY_END();
-}
-
-void setup() {
-  runUnityTests();
-}
-
-void loop() {}
+ws.begin(WS_HOST, WS_PORT, WS_PATH);
+ws.onEvent(webSocketEvent);
 ```
 
-**当前代码中观察到的模式:**
-- 事件驱动架构: 没有模拟 WebSocket 库很难进行单元测试
-- 全局状态 (`WebSocketsClient ws`, `String reqId`): 需要测试隔离
-- 基于回调的设计: 测试需要注入模拟回调
+**测试模式：**
+- 设置阶段：`setup()` 函数初始化硬件和网络
+- 运行循环阶段：`loop()` 函数持续处理输入和事件
+- 断言方式：串口输出验证状态（`Serial.println()`）
 
-## 模拟
+## 模拟（Mocking）
 
-**框架:**
-- Arduino 测试通常使用直接硬件模拟或依赖注入
-- 当前配置中未检测到模拟库
+**框架：** 不适用
 
-**推荐方法:**
+**模拟策略：**
+- 无代码级模拟，使用真实硬件测试
+- 依赖库函数：
+  - `M5Unified`：完整初始化和运行
+  - `WebSocketsClient`：真实 WebSocket 连接
+  - `ArduinoJson`：真实 JSON 序列化/反序列化
+
+**与真实资源互动：**
 ```cpp
-// 用于测试的模拟 WebSocket 客户端
-class MockWebSocketsClient {
-  String lastMessage;
-  void sendTXT(String msg) {
-    lastMessage = msg;
-  }
-  String getLastMessage() {
-    return lastMessage;
-  }
-};
+// 路径 src/main.cpp - 行 225-237
+// 实际初始化 M5Stack 硬件
+static void setupAudio() {
+  auto cfg = M5.config();
+  M5.begin(cfg);
 
-// 通过接口或模板注入到生产代码中
-```
+  auto micCfg = M5.Mic.config();
+  micCfg.noise_filter_level = (micCfg.noise_filter_level + 8) & 255;
+  M5.Mic.config(micCfg);
 
-**需要模拟的内容:**
-- `WebSocketsClient` - 第三方库依赖
-- WiFi 连接 - 硬件依赖
-- 串口输出 - 用于在测试中捕获日志
-
-**不需要模拟的内容:**
-- JSON 消息格式生成 - 要验证的核心逻辑
-- 状态机逻辑 (连接 → 开始 → 流式传输 → 结束 → 断开)
-- 音频参数配置
-
-## 测试数据和固定装置
-
-**测试数据模式:**
-```cpp
-const char* TEST_WIFI_SSID = "TEST_WIFI";
-const char* TEST_WIFI_PASS = "test_password";
-const char* TEST_AUTH_TOKEN = "test_token_123";
-const char* TEST_REQ_ID = "test-req-1";
-
-String getExpectedStartMessage() {
-  return String("{\"type\":\"start\",\"token\":\"") + TEST_AUTH_TOKEN +
-         "\",\"reqId\":\"" + TEST_REQ_ID + "\",...}";
+  M5.Speaker.end();
+  M5.Mic.begin();
 }
 ```
 
-**位置:**
-- `test/fixtures/` 用于共享测试数据
-- 测试文件顶部的常量用于隔离的测试套件
+**模拟的内容：**
+- 无：所有测试依赖硬件正确配置
 
-## 覆盖率
+## 测试数据与工具
 
-**要求:**
-- 未配置覆盖率强制执行
-- 推荐最低覆盖率: 核心 WebSocket 消息生成 (100%)
-- 状态机转换 (>80%)
+**测试数据：**
+- 音频缓冲区：`static int16_t buf[CHUNK_SAMPLES];` (行 240)
+  - 320 个样本，16-bit PCM，16kHz 单声道
+  - 20ms 块大小
 
-**查看覆盖率:**
+**测试工具：**
 ```bash
-pio test --verbose  # 显示测试输出但不显示覆盖率指标
-# 对于覆盖率报告，在 platformio.ini 中配置覆盖率工具
+# 1. PlatformIO 编译验证
+pio run
+
+# 2. 串口监控（验证运行时输出）
+pio device monitor
+
+# 3. 手动硬件测试
+# - 连接 WiFi，检查 "WiFi OK" 消息
+# - 按 BtnA 开始录音，检查 "Recording start" 消息
+# - 释放 BtnA 停止录音，检查 "Recording stop" 消息
+# - 验证蜂鸣音播放（停止后）
+# - 检查 WebSocket 消息收发
 ```
 
-## 测试类型
+## 覆盖范围
 
-**单元测试:**
-- 范围: 单独的函数，如 `sendStart()`, `sendEnd()`
-- 方法: 模拟 WebSocket 客户端，验证消息格式和结构
-- 示例: 测试 `sendStart()` 生成包含所有必需字段的正确 JSON
+**要求：** 无强制覆盖率要求
 
-**集成测试:**
-- 范围: WebSocket 通信流程 (连接 → 开始 → 结束)
-- 方法: 模拟 WebSocket 库回调，验证状态转换
-- 示例: 测试接收 `WStype_CONNECTED` 触发 `sendStart()`
+**可验证功能：**
 
-**硬件集成测试:**
-- 范围: WiFi 连接、I2S 音频录制 (实现时)
-- 方法: 在实际 ESP32-S3 硬件上运行
-- 测试命令: `pio run -t upload && pio device monitor`
+**WiFi 连接流程：**
+```cpp
+// 路径 src/main.cpp - 行 258-267
+// 串口输出验证：
+// "WiFi connecting..."
+// "WiFi OK, IP=192.168.x.x"
+```
 
-**端到端测试:**
-- 框架: 当前未使用
-- 推荐: 使用实际 WebSocket 服务器进行手动测试 (在 README.md 中指定)
-- 可以在核心逻辑完成后通过设备模拟/仿真实现
+**WebSocket 连接流程：**
+```cpp
+// 路径 src/main.cpp - 行 269-271
+ws.begin(WS_HOST, WS_PORT, WS_PATH);
+ws.onEvent(webSocketEvent);
+ws.setReconnectInterval(2000);
 
-## 无测试的验证 (当前 MVP 模式)
+// 预期串口输出：
+// "WS connected"
+// "WS disconnected"
+```
 
-**手动验证:**
-- 通过 `pio device monitor` 以 115200 波特率监控串口输出
-- WebSocket 服务器响应验证 (手动检查服务器日志)
-- 通过服务器端解析进行消息格式验证 (隐含在服务器接受中)
+**按钮和录音逻辑：**
+```cpp
+// 路径 src/main.cpp - 行 279-303
+// 手动测试：
+// 1. 按下 BtnA → "Recording start" 输出
+// 2. 保持按下 → 音频块持续发送
+// 3. 释放 BtnA → "Recording stop" 输出
+// 4. 蜂鸣音播放（如有待处理）
+```
 
-**观察到的测试方法:**
-- 通过 `Serial.println()` 和 `Serial.printf()` 进行调试输出，显示:
-  - WiFi 连接状态
-  - WebSocket 连接/断开事件
-  - 接收到的消息内容和二进制数据长度
+**JSON 解析与事件处理：**
+```cpp
+// 路径 src/main.cpp - 行 203-218
+// 测试接收：
+// - 有效 hook 事件 → 调用 handleHookEvent()
+// - 其他 JSON → 串口打印
+// - 非 JSON 文本 → "WS text (non-json): ..." 输出
+```
 
-## 推荐的测试策略 (下一阶段)
+## 常见测试场景
 
-**阶段 1 - 单元测试:**
-1. 创建 `test/test_messages.cpp` 进行消息格式验证
-2. 模拟 WebSocket 客户端以捕获发送的消息
-3. 验证 JSON 结构、字段类型、必需参数
+**正常流程：**
+1. 启动设备 → WiFi 连接
+2. 等待 WebSocket 连接到 Mac 服务器
+3. 按 BtnA 开始录音，流式发送 PCM 数据
+4. 释放 BtnA 停止录音，发送 `end` 消息
+5. 接收 ASR 结果
+6. 接收 hook 事件，蜂鸣音反馈
 
-**阶段 2 - 集成测试:**
-1. 创建 `test/test_protocol.cpp` 进行状态机测试
-2. 按顺序模拟 WebSocket 事件
-3. 验证正确的消息发送顺序 (开始 → 块 → 结束)
+**异常情况：**
 
-**阶段 3 - 硬件测试:**
-1. 添加 I2S 音频录制实现
-2. 测试音频缓冲区填充和帧传输
-3. 验证音频数据格式 (16kHz, 16 位单声道)
+**WiFi 未连接：**
+```cpp
+// 路径 src/main.cpp - 行 280-281
+if (!wsConnected) {
+  Serial.println("BtnA pressed but WS not connected");
+}
+```
+- 预期：按下 BtnA 时，不启动录音
+
+**WebSocket 断开：**
+```cpp
+// 路径 src/main.cpp - 行 189-191
+case WStype_DISCONNECTED:
+  wsConnected = false;
+  Serial.println("WS disconnected");
+```
+- 预期：自动重连（2 秒间隔）
+
+**录音超时：**
+```cpp
+// 路径 src/main.cpp - 行 294
+if (M5.BtnA.wasReleased() || (millis() - recordStartMs) > MAX_RECORD_MS) {
+```
+- 预期：8 秒后自动停止录音
+
+**Hook 事件去重：**
+```cpp
+// 路径 src/main.cpp - 行 169-170
+if (id.length() && seenId(id)) return;
+```
+- 预期：重复的 hook ID 被忽略
+
+## 手动测试清单
+
+**硬件准备：**
+- [ ] ESP32-S3 设备（如 M5Stack Atom EchoS3R）
+- [ ] 配置 WiFi SSID 和密码（src/main.cpp 第 9-10 行）
+- [ ] 配置 AUTH_TOKEN 与 Mac 服务器匹配（src/main.cpp 第 22 行）
+- [ ] 配置 WS_HOSTNAME 为 Mac 主机名（src/main.cpp 第 14-16 行）
+- [ ] Mac 服务器运行：https://github.com/jarbozhang/mac-whisper-ws-asr-server
+
+**编译和刷写：**
+- [ ] `pio run` - 编译不出错
+- [ ] `pio device monitor` - 打开串口，波特率 115200
+- [ ] `pio run -t upload` - 刷写固件，重启设备
+
+**功能验证：**
+- [ ] 串口输出 "WiFi connecting..." 然后 "WiFi OK"
+- [ ] 串口输出 "WS connected"
+- [ ] 按下 BtnA：输出 "Recording start"，音频发送
+- [ ] 释放 BtnA：输出 "Recording stop"
+- [ ] 设置 MAX_RECORD_MS 为较小值，验证超时停止
+- [ ] Mac 服务器发送 hook 事件，设备蜂鸣
+- [ ] 验证蜂鸣音优先级（权限 > 失败 > 停止）
+- [ ] 验证去重（同 ID hook 事件只处理一次）
+
+**网络测试：**
+- [ ] 断开 WiFi，验证重连行为
+- [ ] 杀死 Mac 服务器进程，验证 WebSocket 断开和自动重连
+- [ ] 在网络中移动设备，验证稳定性
 
 ---
 
-*测试分析: 2026-02-02*
+*测试模式分析日期：2026-02-03*

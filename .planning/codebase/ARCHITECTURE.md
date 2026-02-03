@@ -1,109 +1,153 @@
-# 系统架构
+# 架构
 
-**分析日期:** 2026-02-02
+**分析日期:** 2026-02-03
 
-## 架构模式概述
+## 模式概述
 
-**总体架构:** 嵌入式客户端-服务器 WebSocket 协议实现
+**整体模式:** 事件驱动的嵌入式客户端
 
 **关键特征:**
-- ESP32-S3 微控制器的单文件固件脚手架
-- 客户端主动连接到远程 ASR 服务器
-- 由 WebSocket 生命周期事件驱动的状态机
-- 同步阻塞 I/O 与周期性轮询循环
+- 单一主程序文件（`src/main.cpp`）包含所有业务逻辑
+- 基于硬件中断和事件轮询的事件处理
+- WebSocket 长连接用于实时音频传输
+- 推送通话（Push-to-Talk）UI 模式，由硬件按钮触发
 
-## 架构分层
+## 层级
 
-**硬件抽象层:**
-- 目的: 在 Arduino 库级别管理 WiFi 和 WebSocket 通信
-- 位置: Arduino SDK + links2004/WebSockets 库
-- 包含: WiFi 连接、WebSocket 客户端生命周期
-- 依赖: ESP32 硬件外设
-- 被使用: `src/main.cpp` 中的应用逻辑
-
-**应用层:**
-- 目的: 控制音频录制工作流和协议消息
+**应用层（Application）:**
 - 位置: `src/main.cpp`
-- 包含: WebSocket 事件处理、消息序列化、设备设置
-- 依赖: Arduino WiFi 和 WebSocket 库
-- 被使用: 无依赖 (入口点)
+- 用途: 主业务逻辑、用户交互处理、协议状态管理
+- 包含: 按钮处理、录音控制、WebSocket 连接管理、音频 Beep 播放
+- 依赖: M5Unified（硬件）、WebSocket 客户端、ArduinoJson
+- 使用: Arduino 框架直接调用
+
+**通信层（Communication）:**
+- 位置: `src/main.cpp` 中的 WebSocket 事件处理函数
+- 用途: WebSocket 连接、JSON 消息序列化/反序列化、协议消息处理
+- 包含: `webSocketEvent()`、`sendStart()`、`sendEnd()`、Hook 事件解析
+- 依赖: WebSockets 库、ArduinoJson
+- 使用: 应用层调用，Arduino 事件系统驱动
+
+**硬件抽象层（Hardware）:**
+- 位置: `src/main.cpp` 中的 M5Unified 接口
+- 用途: 音频录制、播放、按钮输入、WiFi 连接
+- 包含: `setupAudio()`、`recordOneChunkAndSend()`、`playPendingBeeps()`
+- 依赖: M5Unified、WiFi 库
+- 使用: 应用层通过 M5Unified API 使用
 
 ## 数据流
 
-**连接建立流程:**
+**ASR 录音流程（用户启动到完成）:**
 
-1. `setup()` 初始化串口调试输出
-2. WiFi 开始连接到配置的 SSID，使用静态凭证
-3. 在阻塞循环中等待 WiFi 连接成功
-4. WebSocket 客户端开始连接到 `ws://{WS_HOST}:{WS_PORT}{WS_PATH}`
-5. 注册事件回调和重连间隔 (2000ms)
+1. 用户按住 Button A（通过轮询检测）
+2. 应用层调用 `sendStart()` 发送 JSON 启动消息（包含 token、reqId、音频格式）
+3. 录音循环：
+   - `recordOneChunkAndSend()` 从麦克风缓冲区读取 320 个样本（20ms @ 16kHz）
+   - 转换为 640 字节的二进制 PCM 数据
+   - 通过 WebSocket 发送二进制帧到 Mac 服务器
+4. 用户释放 Button A 或达到 8 秒超时
+5. 应用层调用 `sendEnd()` 发送停止信号
+6. Mac 服务器处理音频并返回 `result` JSON（包含识别文本）
+7. 在此期间收集的任何 Hook 事件触发的 Beep 在录音停止后播放
 
-**音频协议序列 (已规划):**
+**Hook 事件处理流程（服务器发起）:**
 
-1. WebSocket 连接 → 调用 `webSocketEvent()`，参数为 `WStype_CONNECTED`
-2. `sendStart()` 序列化 JSON，包含音频格式参数 (16kHz, 16-bit, 单声道 PCM)
-3. 通过 `ws.sendBIN()` 以二进制帧流式传输音频数据
-4. `sendEnd()` 发送完成信号，包含音频块计数
-5. 服务器返回包含转录文本的 JSON 结果
-6. 在 `webSocketEvent()` 处理器中处理结果
+1. Mac 服务器广播 Hook 事件 JSON 消息（`type: "hook"`）
+2. WebSocket 接收器调用 `webSocketEvent()` 的 WStype_TEXT 分支
+3. `handleHookEvent()` 解析事件类型（PermissionRequest、PostToolUseFailure、Stop）
+4. `queueBeep()` 根据录音状态决定立即播放或排队：
+   - 如果正在录音：增加对应的待处理 Beep 计数
+   - 如果未录音：立即切换到扬声器并播放
+5. 录音停止时 `playPendingBeeps()` 按优先级播放所有排队的 Beep
 
 **状态管理:**
-- 请求 ID (`reqId`) 作为全局静态字符串维护，用于请求跟踪
-- WebSocket 连接状态由库管理 (自动重连)
-- 无显式状态机；通过回调的事件驱动
+
+- `wsConnected`: WebSocket 连接状态，由事件回调更新
+- `recording`: 录音进行中标志，由按钮事件和超时控制
+- `currentReqId`: 当前请求 ID，用于关联 start/end 消息
+- `pendingStop/Permission/Failure`: 待播放 Beep 计数器，在非录音状态时消费
+- `recentIds[]`: 16 元素环形缓冲区用于 Hook ID 去重（防止重复播放 Beep）
 
 ## 关键抽象
 
-**WebSocket 协议:**
-- 目的: 抽象网络通信和连接生命周期
-- 示例: `links2004/WebSockets@^2.4.1` 库
-- 模式: 事件回调模式 (`webSocketEvent()`)
+**WebSocket 协议处理:**
+- 位置: `src/main.cpp` 中的 `sendStart()`、`sendEnd()`、`handleHookEvent()`、`webSocketEvent()`
+- 用途: 客户端与 Mac 服务器的通信协议实现
+- 模式:
+  - 启动消息包含完整的音频格式元数据（采样率、通道数、位深度）
+  - 音频数据作为原始二进制帧流传输（不是 JSON）
+  - 接收端通过事件处理回调处理不同消息类型
+  - 使用 `currentReqId` 关联请求-响应对
 
-**消息序列化:**
-- 目的: 为 start、end 和音频数据构造协议消息
-- 示例: `src/main.cpp` (lines 27-41) - `sendStart()`, `sendEnd()`
-- 模式: 使用 JSON 结构的字符串拼接
+**音频 Beep 系统:**
+- 位置: `src/main.cpp` 中的 `BeepKind`、`BeepPattern`、`queueBeep()`、`playPendingBeeps()`
+- 用途: 异步播放音频提示，不阻塞录音
+- 模式:
+  - 三种 Beep 类型，每种有唯一的频率、持续时间、重复次数
+  - 使用排队系统：录音期间收集所有事件，停止后批量播放
+  - 播放优先级：PermissionRequest > PostToolUseFailure > Stop
+  - 通过 M5Unified 的扬声器/麦克风独占机制实现（硬件约束）
 
-**音频配置:**
-- 目的: 为服务器定义音频捕获参数
-- 示例: `SAMPLE_RATE=16000`, `CHANNELS=1`, `BIT_DEPTH=16`
-- 模式: 模块级别的静态常量全局变量 (lines 17-20)
+**Hook 事件去重:**
+- 位置: `src/main.cpp` 中的 `recentIds[]`、`seenId()`
+- 用途: 防止同一事件被多次播放 Beep
+- 模式: 简单的 16 元素环形缓冲区，存储最近看到的事件 ID，按发送顺序轮换
+
+**音频分块系统:**
+- 位置: `src/main.cpp` 中的 `CHUNK_SAMPLES`、`CHUNK_BYTES`、`recordOneChunkAndSend()`
+- 用途: 将连续音频分割成可管理的网络包
+- 规格: 20ms @ 16kHz = 320 样本 = 640 字节（16-bit PCM）
+- 模式: 每次轮询循环调用一次，形成低延迟的流传输
 
 ## 入口点
 
-**setup():**
-- 位置: `src/main.cpp` (line 63)
-- 触发: ESP32 启动/重置
-- 职责: 初始化串口、连接 WiFi、建立 WebSocket 连接
+**setup() 函数:**
+- 位置: `src/main.cpp` 第 252-272 行
+- 触发: Arduino 启动时自动调用一次
+- 职责:
+  - 初始化串行通信（调试）
+  - 调用 `setupAudio()` 初始化 M5Unified 和音频设备
+  - 连接 WiFi
+  - 启动 WebSocket 客户端并注册事件回调
 
-**loop():**
-- 位置: `src/main.cpp` (line 83)
-- 触发: setup 完成后持续轮询
-- 职责: 轮询 WebSocket 消息、处理按钮输入 (TODO)、流式传输音频 (TODO)
-
-**webSocketEvent():**
-- 位置: `src/main.cpp` (line 43)
-- 触发: WebSocket 连接/断开、收到消息
-- 职责: 记录连接状态、连接时发送 start 消息、记录收到的消息
+**loop() 函数:**
+- 位置: `src/main.cpp` 第 274-307 行
+- 触发: 每 1ms 重复执行一次（加 1ms 延迟）
+- 职责:
+  - 处理 WebSocket 事件（`ws.loop()`）
+  - 更新 M5 硬件状态（`M5.update()`）
+  - 轮询按钮状态，启动/停止录音
+  - 如果录音中，尝试读取并发送一个音频块
+  - 录音停止时播放待处理的 Beep
 
 ## 错误处理
 
-**策略:** 脚手架阶段的最小错误处理
+**策略:** 故障安全、日志记录、用户通知
 
 **模式:**
-- WiFi 连接: 带延迟的阻塞循环，无超时
-- WebSocket: 通过库自动重连 (2000ms 间隔)
-- 协议: 无验证或错误恢复 (MVP 脚手架)
-- 串口调试: 通过 `Serial.println()` 的有限日志记录
 
-## 横切关注点
+- **WiFi 连接失败:** 阻塞式等待（带 Serial 输出），直到连接成功；用户看到"连接中..."
+- **WebSocket 断开:** 应用层知道 `wsConnected` 标志，按钮按下时警告用户；自动重新连接（2 秒间隔）
+- **无效 JSON 响应:** 反序列化失败时记录原始文本到 Serial，继续执行（不中断）
+- **音频读取失败:** `recordOneChunkAndSend()` 返回 false，该轮询循环跳过发送
+- **超时保护:** 强制 8 秒录音上限（`MAX_RECORD_MS`）防止无限录音
 
-**日志记录:** 115200 波特率的串口 UART 输出 (Arduino 默认)。有限的调试输出显示连接状态和收到的消息。
+## 跨越关注点
 
-**验证:** 未实现。静态凭证和硬编码的音频参数。TODO 注释表明缺少按钮输入和 I2S 录制的验证。
+**日志记录:**
+- 使用 Serial.println/printf 输出调试信息到串行监视器
+- 关键事件：WiFi 连接、WebSocket 连接/断开、录音开始/停止、接收 JSON 消息
 
-**认证:** 通过在 start 消息中发送的 `AUTH_TOKEN` 字符串进行基本的基于令牌的认证。静态常量，在当前脚手架中未被服务器验证。
+**验证:**
+- WiFi 连接状态检查
+- WebSocket 连接状态检查（`wsConnected` 标志）
+- JSON 反序列化错误检查（`deserializeJson()` 返回值）
+- Hook 事件 ID 存在性检查（防止处理空 ID）
+
+**认证:**
+- 在 `start` 消息中包含 `AUTH_TOKEN`（硬编码或通过编译标志注入）
+- 服务器端验证 token；客户端无额外验证逻辑
 
 ---
 
-*架构分析: 2026-02-02*
+*架构分析: 2026-02-03*
