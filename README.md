@@ -72,10 +72,10 @@ ESP32 蜂鸣音规则（当前）：
 
 ## 测试与验证
 
-项目包含完善的测试工具，位于 `tests/` 和 `scripts/` 目录。
+项目包含完善的测试工具，位于 `test/` 和 `scripts/` 目录。
 
 ### 1. 手动验证 (Manual Check)
-参考 `tests/README.md` 中的检查清单，手动验证 WiFi 连接、mDNS 解析、WebSocket 连接、录音功能和音频质量。
+参考 `test/README.md` 中的检查清单，手动验证 WiFi 连接、mDNS 解析、WebSocket 连接、录音功能和音频质量。
 
 ### 2. 模拟服务器 (Mock Server)
 使用轻量级 Python 模拟服务器验证 ESP32 协议，无需启动完整的 ASR 后端。

@@ -18,7 +18,7 @@
 
 为确保系统稳定性，引入了分层测试策略：
 
-1.  **手动验证清单 (`tests/README.md`)**：
+1.  **手动验证清单 (`test/README.md`)**：
     -   详细列出了针对 Connectivity（连接性）、Audio（音频功能）、Latency（延迟）和 Hook Events（事件响应）的验收标准和操作步骤。
 
 2.  **模拟服务器 (`scripts/mock_server.py`)**：
@@ -28,7 +28,7 @@
         -   接收并记录音频二进制数据长度。
         -   提供 CLI 交互界面，可手动触发 `PermissionRequest`、`PostToolUseFailure`、`Stop` 等 Hook 事件，用于验证 ESP32 的事件处理和蜂鸣音反馈逻辑。
 
-3.  **设备端单元测试 (`tests/test_main.cpp`)**：
+3.  **设备端单元测试 (`test/test_main.cpp`)**：
     -   基于 `Unity` 框架，直接在 ESP32 硬件上运行。
     -   验证 `Config` 加载的正确性（如 WiFi 列表非空）。
     -   验证 `NetworkManager` 和 `AudioManager` 的初始状态。
