@@ -1,32 +1,18 @@
 #pragma once
 
 #include <Arduino.h>
-#include <vector>
-
-// WiFi Configuration
-struct WiFiCredential {
-    const char* ssid;
-    const char* password;
-};
-
-// Add your WiFi networks here
-static const std::vector<WiFiCredential> WIFI_NETWORKS = {
-    {"YOUR_WIFI_SSID_1", "YOUR_WIFI_PASS_1"},
-    {"YOUR_WIFI_SSID_2", "YOUR_WIFI_PASS_2"}
-};
+#include "secrets.h"   // WiFi credentials, WS_HOSTNAME, AUTH_TOKEN (gitignored)
 
 // WebSocket Configuration
-// Mac mDNS hostname (no IP scanning). 
-// Recommend configuring this via build_flags (e.g., -DWS_HOSTNAME=\"jiabos-macbook-pro-2.local\")
+// WS_HOSTNAME is defined in secrets.h (or via build_flags).
+// Fallback only if neither source provides it.
 #ifndef WS_HOSTNAME
-#define WS_HOSTNAME "jiabos-macbook-pro-2.local"
+#define WS_HOSTNAME "your-hostname.local"
 #endif
 
 static const char *WS_HOST = WS_HOSTNAME;
 static const uint16_t WS_PORT = 8765;
 static const char *WS_PATH = "/ws";
-
-static const char *AUTH_TOKEN = "change_me";
 
 // Audio Configuration
 static constexpr int SAMPLE_RATE = 16000;
