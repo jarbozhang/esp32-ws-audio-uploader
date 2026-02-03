@@ -22,7 +22,7 @@ void onHookEvent(const char* eventName) {
 }
 
 #ifndef PIO_UNIT_TEST
-void setup() {
+__attribute__((weak)) void setup() {
     Serial.begin(115200);
     delay(200);
 
@@ -32,7 +32,7 @@ void setup() {
     NetworkMgr.begin();
 }
 
-void loop() {
+__attribute__((weak)) void loop() {
     AudioMgr.update();
     NetworkMgr.loop();
 
