@@ -70,6 +70,32 @@ ESP32 蜂鸣音规则（当前）：
 注意：Atom EchoS3R 的麦克风和扬声器**不能同时使用**。
 本固件**不会中断录音**；蜂鸣音会排队，在录音停止后统一播放。
 
+## 测试与验证
+
+项目包含完善的测试工具，位于 `tests/` 和 `scripts/` 目录。
+
+### 1. 手动验证 (Manual Check)
+参考 `tests/README.md` 中的检查清单，手动验证 WiFi 连接、mDNS 解析、WebSocket 连接、录音功能和音频质量。
+
+### 2. 模拟服务器 (Mock Server)
+使用轻量级 Python 模拟服务器验证 ESP32 协议，无需启动完整的 ASR 后端。
+
+```bash
+pip install websockets
+python scripts/mock_server.py
+```
+**控制命令**：
+- `p`: 模拟发送 `PermissionRequest` Hook 事件
+- `f`: 模拟发送 `PostToolUseFailure` Hook 事件
+- `s`: 模拟发送 `Stop` Hook 事件
+
+### 3. 设备端单元测试 (On-Device Unit Tests)
+使用 Unity 框架在 ESP32 硬件上运行单元测试。
+
+```bash
+pio test -e esp32-s3
+```
+
 ## 构建与刷写（PlatformIO）
 
 本项目使用 PlatformIO + Arduino 框架。

@@ -14,6 +14,25 @@
 -   **`src/NetworkManager.h/cpp`**：处理所有网络相关的任务，包括多网络 WiFi 连接管理（使用 `WiFiMulti`）、mDNS 服务发现（解析 WebSocket 服务器主机名）、以及 WebSocket 客户端通信的生命周期管理。
 -   **`src/main.cpp`**：作为主协调器，仅负责初始化 `AudioManager` 和 `NetworkManager`，并在主循环中调用它们的更新方法，实现模块间的协作。
 
+## 测试与验证（Phase 3: Generate Testing Methods）
+
+为确保系统稳定性，引入了分层测试策略：
+
+1.  **手动验证清单 (`tests/README.md`)**：
+    -   详细列出了针对 Connectivity（连接性）、Audio（音频功能）、Latency（延迟）和 Hook Events（事件响应）的验收标准和操作步骤。
+
+2.  **模拟服务器 (`scripts/mock_server.py`)**：
+    -   轻量级 Python 脚本，基于 `websockets` 库。
+    -   **功能**：
+        -   接收并校验 `start`/`end` JSON 消息结构。
+        -   接收并记录音频二进制数据长度。
+        -   提供 CLI 交互界面，可手动触发 `PermissionRequest`、`PostToolUseFailure`、`Stop` 等 Hook 事件，用于验证 ESP32 的事件处理和蜂鸣音反馈逻辑。
+
+3.  **设备端单元测试 (`tests/test_main.cpp`)**：
+    -   基于 `Unity` 框架，直接在 ESP32 硬件上运行。
+    -   验证 `Config` 加载的正确性（如 WiFi 列表非空）。
+    -   验证 `NetworkManager` 和 `AudioManager` 的初始状态。
+
 ## WebSocket
 
 -   URL：`ws://<mac-host>:8765/ws`
