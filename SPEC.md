@@ -1,16 +1,16 @@
-# Spec (esp32-ws-audio-uploader)
+# 规范（esp32-ws-audio-uploader）
 
-This project is the ESP32 client side of the overall system.
+本项目是整体系统中 ESP32 客户端侧的实现。
 
-Canonical spec lives in Obsidian:
+规范源文档位于 Obsidian：
 `/Volumes/100.86.103.28/obsidian/20 Areas/Hardware/Claude Code/ESP32 + WebSocket 语音上传 + whisper.cpp ASR（Mac Node）- Spec.md`
 
 ## WebSocket
 
-- URL: `ws://<mac-host>:8765/ws`
-- Auth: send `token` in `start` message; must match server `AUTH_TOKEN`
+- URL：`ws://<mac-host>:8765/ws`
+- 认证：在 `start` 消息中发送 `token`，必须与服务器的 `AUTH_TOKEN` 一致
 
-### Start
+### Start（启动录音）
 ```json
 {
   "type": "start",
@@ -24,24 +24,24 @@ Canonical spec lives in Obsidian:
 }
 ```
 
-### Audio
-Binary frames: raw PCM bytes.
+### Audio（音频数据）
+二进制帧：原始 PCM 字节。
 
-Default audio format:
-- 16kHz
-- mono
-- 16-bit signed little-endian (`pcm_s16le`)
+默认音频格式：
+- 采样率 16kHz
+- 单声道
+- 16-bit 有符号小端序（`pcm_s16le`）
 
-### End
+### End（停止录音）
 ```json
 { "type": "end", "reqId": "..." }
 ```
 
-## Hooks broadcast (server → esp32)
+## Hook 事件广播（服务器 → ESP32）
 
-The Mac server may broadcast hook events:
+Mac 服务器可能广播 hook 事件：
 ```json
 { "type": "hook", "id": "uuid", "ts": 1730000000000, "hook_event_name": "Stop" }
 ```
 
-ESP32 uses these to trigger beeps (queued while recording).
+ESP32 使用这些事件触发蜂鸣音（录音期间排队，停止后播放）。

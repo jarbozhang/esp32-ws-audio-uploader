@@ -1,111 +1,111 @@
 # esp32-ws-audio-uploader
 
-ESP32-S3 firmware that records audio from an I2S microphone (M5Stack Atom EchoS3R via M5Unified) and uploads it to a Mac WebSocket ASR server.
+ESP32-S3 固件，通过 I2S 麦克风（M5Stack Atom EchoS3R / M5Unified）录制音频，并上传到 Mac WebSocket ASR 服务器。
 
-Companion server:
+配套服务器：
 - https://github.com/jarbozhang/mac-whisper-ws-asr-server
 
-## What it does
+## 功能说明
 
-- Connects to WiFi
-- Connects to Mac server via WebSocket: `ws://<mac-host>:8765/ws`
-- Push-to-talk:
-  - Hold BtnA to record
-  - Streams audio as binary PCM frames
-  - Releases BtnA to stop and request ASR
-- Listens for broadcast hook events from Claude Code (forwarded by the Mac server) and plays notification **beeps**.
+- 连接 WiFi
+- 通过 WebSocket 连接到 Mac 服务器：`ws://<mac-host>:8765/ws`
+- 推送录音（Push-to-Talk）：
+  - 按住 BtnA 开始录音
+  - 以二进制 PCM 帧流式发送音频
+  - 松开 BtnA 停止录音并请求 ASR 识别
+- 监听 Mac 服务器转发的 Claude Code hook 事件广播，触发通知**蜂鸣音**。
 
-## Configuration
+## 配置
 
-Edit `src/main.cpp`:
-- `WIFI_SSID`, `WIFI_PASS`
-- `AUTH_TOKEN` (must match Mac server `AUTH_TOKEN`)
+编辑 `src/main.cpp`：
+- `WIFI_SSID`、`WIFI_PASS`
+- `AUTH_TOKEN`（必须与 Mac 服务器的 `AUTH_TOKEN` 一致）
 
-Mac address:
-- Default uses mDNS hostname: `jiabos-macbook-pro-2.local`
-- You can override at build time:
-  - PlatformIO build flag: `-DWS_HOSTNAME=\"your-mac.local\"`
+Mac 主机地址：
+- 默认使用 mDNS 主机名：`jiabos-macbook-pro-2.local`
+- 可在编译时覆盖：
+  - PlatformIO 编译标志：`-DWS_HOSTNAME=\"your-mac.local\"`
 
-## Protocol (ASR)
+## 协议（ASR）
 
 ESP32 → Mac
-- Connect to `ws://<mac-host>:8765/ws`
-- Send JSON `start` (with token, reqId, audio format params)
-- Stream audio chunks as binary frames (raw PCM)
-- Send JSON `end`
+- 连接 `ws://<mac-host>:8765/ws`
+- 发送 JSON `start`（包含 token、reqId、音频格式参数）
+- 以二进制帧流式发送音频块（原始 PCM）
+- 发送 JSON `end`
 
 Mac → ESP32
-- Receive JSON `ack`
-- Receive JSON `result` with `text`
+- 接收 JSON `ack`
+- 接收 JSON `result`，其中包含 `text` 识别文本
 
-Audio format (current default):
+音频格式（当前默认）：
 - `format`: `pcm_s16le`
 - `sampleRate`: 16000
 - `channels`: 1
 - `bitDepth`: 16
 
-Chunking (recommended):
-- 20ms @ 16kHz mono s16 => 320 samples => 640 bytes per frame
+分块规格（当前配置）：
+- 20ms @ 16kHz 单声道 s16 => 320 样本 => 每帧 640 字节
 
-## Protocol (Hooks broadcast)
+## 协议（Hook 事件广播）
 
-Mac server can broadcast compacted Claude Code hook events as JSON text frames:
+Mac 服务器可广播 Claude Code hook 事件，以 JSON 文本帧形式发送：
 
 ```json
 { "type": "hook", "id": "uuid", "ts": 1730000000000, "hook_event_name": "Stop", "session_id": "..." }
 ```
 
-ESP32 beep rules (current):
-- `PermissionRequest` → beep (needs approval)
-- `PostToolUseFailure` → beep (failure)
-- `Stop` → beep (Claude finished output)
+ESP32 蜂鸣音规则（当前）：
+- `PermissionRequest` → 蜂鸣音（需要授权）
+- `PostToolUseFailure` → 蜂鸣音（工具执行失败）
+- `Stop` → 蜂鸣音（Claude 输出结束）
 
-Important: Atom EchoS3R mic and speaker cannot be used simultaneously.
-This firmware **does not interrupt recording**; it queues beeps and plays them after recording stops.
+注意：Atom EchoS3R 的麦克风和扬声器**不能同时使用**。
+本固件**不会中断录音**；蜂鸣音会排队，在录音停止后统一播放。
 
-## Build / Flash (PlatformIO)
+## 构建与刷写（PlatformIO）
 
-This repo uses PlatformIO + Arduino framework.
+本项目使用 PlatformIO + Arduino 框架。
 
-### Prerequisites
+### 前置要求
 
-PlatformIO requires **Python 3.10–3.13**. If your system Python doesn't meet this (e.g. Homebrew's externally-managed env or Anaconda base < 3.10), create a dedicated environment first:
+PlatformIO 需要 **Python 3.10–3.13**。如果系统 Python 不满足要求（例如 Homebrew 的受管理环境或 Anaconda base < 3.10），需要先创建独立环境：
 
 ```bash
 # Anaconda / Miniconda
 conda create -n pio python=3.12 -y
 conda activate pio
-pip install platformio pyyaml          # pyyaml is required by the espressif32 platform builder
+pip install platformio pyyaml          # pyyaml 是 espressif32 平台构建器所需的隐式依赖
 ```
 
-> `pyyaml` is pulled in implicitly by the ESP32 Arduino framework builder but is not declared as a PlatformIO dependency — install it manually if you see `ModuleNotFoundError: No module named 'yaml'`.
+> `pyyaml` 被 ESP32 Arduino 框架构建器隐式引用，但未声明为 PlatformIO 依赖。如果出现 `ModuleNotFoundError: No module named 'yaml'`，需要手动安装。
 
-### First build
+### 首次构建
 
-The first `pio run` automatically downloads:
-- **espressif32** platform + Xtensa toolchain
-- **Arduino ESP32** framework (IDF 5.5)
-- Libraries: WebSockets 2.7.3, M5Unified 0.2.13 (+M5GFX), ArduinoJson 7.4.2
+第一次运行 `pio run` 会自动下载：
+- **espressif32** 平台 + Xtensa 工具链
+- **Arduino ESP32** 框架（IDF 5.5）
+- 库：WebSockets 2.7.3、M5Unified 0.2.13（+M5GFX）、ArduinoJson 7.4.2
 
 ```bash
-pio run                  # compile only (downloads everything on first run)
-pio run -t upload        # compile + flash firmware to device
-pio device monitor       # open serial monitor (115200 baud)
+pio run                  # 仅编译（首次运行时下载所有依赖）
+pio run -t upload        # 编译并刷写固件到设备
+pio device monitor       # 打开串口监控（115200 baud）
 ```
 
-### Verified build output (as of 2026-02-03)
+### 已验证的构建输出（2026-02-03）
 
-| Resource | Used | Total |
-|----------|------|-------|
+| 资源 | 已用 | 总量 |
+|------|------|------|
 | RAM | 50 KB (15.4%) | 328 KB |
 | Flash | 1.3 MB (40.2%) | 3.3 MB |
 
-### Known compiler warnings (harmless)
+### 已知编译警告（无影响）
 
-- `WebSocketsClient.cpp`: `flush()` deprecated — upstream library issue, no functional impact.
-- `main.cpp`: `StaticJsonDocument` deprecated in ArduinoJson v7 — replace with `JsonDocument` if desired, no runtime impact.
+- `WebSocketsClient.cpp`：`flush()` 弃用提示 — 上游库问题，无功能影响。
+- `main.cpp`：`StaticJsonDocument` 在 ArduinoJson v7 中弃用 — 可替换为 `JsonDocument`，当前运行无影响。
 
-## Notes
+## 备注
 
-Spec source (Obsidian):
+规范源文档（Obsidian）：
 `/Volumes/100.86.103.28/obsidian/20 Areas/Hardware/Claude Code/ESP32 + WebSocket 语音上传 + whisper.cpp ASR（Mac Node）- Spec.md`
