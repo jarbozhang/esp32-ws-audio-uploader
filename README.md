@@ -65,18 +65,45 @@ This firmware **does not interrupt recording**; it queues beeps and plays them a
 
 ## Build / Flash (PlatformIO)
 
-This repo uses PlatformIO + Arduino:
+This repo uses PlatformIO + Arduino framework.
 
-```ini
-[env:esp32-s3]
-platform = espressif32
-board = esp32-s3-devkitc-1
-framework = arduino
+### Prerequisites
+
+PlatformIO requires **Python 3.10–3.13**. If your system Python doesn't meet this (e.g. Homebrew's externally-managed env or Anaconda base < 3.10), create a dedicated environment first:
+
+```bash
+# Anaconda / Miniconda
+conda create -n pio python=3.12 -y
+conda activate pio
+pip install platformio pyyaml          # pyyaml is required by the espressif32 platform builder
 ```
 
-Then:
-- `pio run -t upload`
-- `pio device monitor`
+> `pyyaml` is pulled in implicitly by the ESP32 Arduino framework builder but is not declared as a PlatformIO dependency — install it manually if you see `ModuleNotFoundError: No module named 'yaml'`.
+
+### First build
+
+The first `pio run` automatically downloads:
+- **espressif32** platform + Xtensa toolchain
+- **Arduino ESP32** framework (IDF 5.5)
+- Libraries: WebSockets 2.7.3, M5Unified 0.2.13 (+M5GFX), ArduinoJson 7.4.2
+
+```bash
+pio run                  # compile only (downloads everything on first run)
+pio run -t upload        # compile + flash firmware to device
+pio device monitor       # open serial monitor (115200 baud)
+```
+
+### Verified build output (as of 2026-02-03)
+
+| Resource | Used | Total |
+|----------|------|-------|
+| RAM | 50 KB (15.4%) | 328 KB |
+| Flash | 1.3 MB (40.2%) | 3.3 MB |
+
+### Known compiler warnings (harmless)
+
+- `WebSocketsClient.cpp`: `flush()` deprecated — upstream library issue, no functional impact.
+- `main.cpp`: `StaticJsonDocument` deprecated in ArduinoJson v7 — replace with `JsonDocument` if desired, no runtime impact.
 
 ## Notes
 
