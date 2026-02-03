@@ -40,3 +40,9 @@ static constexpr int CHUNK_BYTES = CHUNK_SAMPLES * (BIT_DEPTH / 8) * CHANNELS;
 
 // Recording duration cap (safety)
 static constexpr uint32_t MAX_RECORD_MS = 8000;
+
+// Control buttons (active LOW with INPUT_PULLUP)
+#define BTN_APPROVE_PIN      5
+#define BTN_REJECT_PIN       6
+#define BTN_SWITCH_MODEL_PIN 7
+#define BTN_AUTO_APPROVE_PIN 8

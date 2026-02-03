@@ -19,7 +19,13 @@ public:
     void sendStart(String reqId);
     void sendEnd(String reqId);
     void sendAudio(uint8_t* data, size_t len);
-    
+
+    // Claude Code control commands
+    void sendApprove();
+    void sendReject();
+    void sendSwitchModel();
+    void sendToggleAutoApprove();
+
     void setHookCallback(HookCallback cb) { _hookCallback = cb; }
 
 private:

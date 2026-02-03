@@ -98,6 +98,42 @@ void AppNetworkManager::sendEnd(String reqId) {
     _ws.sendTXT(out);
 }
 
+void AppNetworkManager::sendApprove() {
+    StaticJsonDocument<64> doc;
+    doc["type"] = "command";
+    doc["action"] = "approve";
+    String out;
+    serializeJson(doc, out);
+    _ws.sendTXT(out);
+}
+
+void AppNetworkManager::sendReject() {
+    StaticJsonDocument<64> doc;
+    doc["type"] = "command";
+    doc["action"] = "reject";
+    String out;
+    serializeJson(doc, out);
+    _ws.sendTXT(out);
+}
+
+void AppNetworkManager::sendSwitchModel() {
+    StaticJsonDocument<64> doc;
+    doc["type"] = "command";
+    doc["action"] = "switch_model";
+    String out;
+    serializeJson(doc, out);
+    _ws.sendTXT(out);
+}
+
+void AppNetworkManager::sendToggleAutoApprove() {
+    StaticJsonDocument<64> doc;
+    doc["type"] = "command";
+    doc["action"] = "toggle_auto_approve";
+    String out;
+    serializeJson(doc, out);
+    _ws.sendTXT(out);
+}
+
 void AppNetworkManager::sendAudio(uint8_t* data, size_t len) {
     if (_wsConnected) {
         _ws.sendBIN(data, len);
