@@ -1,8 +1,8 @@
 #include "NetworkManager.h"
 
-NetworkManager NetworkMgr;
+AppNetworkManager NetworkMgr;
 
-void NetworkManager::begin() {
+void AppNetworkManager::begin() {
     // Setup WiFi Multi
     for (const auto& cred : WIFI_NETWORKS) {
         _wifiMulti.addAP(cred.ssid, cred.password);
@@ -15,7 +15,7 @@ void NetworkManager::begin() {
     resolveAndConnect();
 }
 
-void NetworkManager::connectWiFi() {
+void AppNetworkManager::connectWiFi() {
     while (_wifiMulti.run() != WL_CONNECTED) {
         delay(500);
         Serial.print(".");
@@ -25,7 +25,7 @@ void NetworkManager::connectWiFi() {
     Serial.println(WiFi.localIP());
 }
 
-void NetworkManager::resolveAndConnect() {
+void AppNetworkManager::resolveAndConnect() {
     if (!MDNS.begin("esp32-client")) {
         Serial.println("Error setting up MDNS responder!");
     }
@@ -53,7 +53,7 @@ void NetworkManager::resolveAndConnect() {
     }
 }
 
-void NetworkManager::loop() {
+void AppNetworkManager::loop() {
     // Ensure WiFi
     if (_wifiMulti.run() != WL_CONNECTED) {
         Serial.println("WiFi lost, reconnecting...");
@@ -69,11 +69,11 @@ void NetworkManager::loop() {
     _ws.loop();
 }
 
-bool NetworkManager::isConnected() {
+bool AppNetworkManager::isConnected() {
     return _wsConnected;
 }
 
-void NetworkManager::sendStart(String reqId) {
+void AppNetworkManager::sendStart(String reqId) {
     StaticJsonDocument<256> doc;
     doc["type"] = "start";
     doc["token"] = AUTH_TOKEN;
@@ -89,7 +89,7 @@ void NetworkManager::sendStart(String reqId) {
     _ws.sendTXT(out);
 }
 
-void NetworkManager::sendEnd(String reqId) {
+void AppNetworkManager::sendEnd(String reqId) {
     StaticJsonDocument<128> doc;
     doc["type"] = "end";
     doc["reqId"] = reqId;
@@ -98,13 +98,13 @@ void NetworkManager::sendEnd(String reqId) {
     _ws.sendTXT(out);
 }
 
-void NetworkManager::sendAudio(uint8_t* data, size_t len) {
+void AppNetworkManager::sendAudio(uint8_t* data, size_t len) {
     if (_wsConnected) {
         _ws.sendBIN(data, len);
     }
 }
 
-bool NetworkManager::seenId(const String &id) {
+bool AppNetworkManager::seenId(const String &id) {
   if (!id.length()) return false;
   for (auto &s : _recentIds) {
     if (s == id) return true;
@@ -113,7 +113,7 @@ bool NetworkManager::seenId(const String &id) {
   return false;
 }
 
-void NetworkManager::handleHookEvent(const JsonDocument &doc) {
+void AppNetworkManager::handleHookEvent(const JsonDocument &doc) {
   const char *idc = doc["id"] | "";
   String id = String(idc);
   if (id.length() && seenId(id)) return;
@@ -124,7 +124,7 @@ void NetworkManager::handleHookEvent(const JsonDocument &doc) {
   }
 }
 
-void NetworkManager::webSocketEvent(WStype_t type, uint8_t *payload, size_t length) {
+void AppNetworkManager::webSocketEvent(WStype_t type, uint8_t *payload, size_t length) {
   switch (type) {
   case WStype_DISCONNECTED:
     _wsConnected = false;

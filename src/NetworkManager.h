@@ -9,7 +9,7 @@
 // Callback for received hook events
 typedef std::function<void(const char* eventName)> HookCallback;
 
-class NetworkManager {
+class AppNetworkManager {
 public:
     void begin();
     void loop();
@@ -44,4 +44,4 @@ private:
     uint8_t _recentIdx = 0;
 };
 
-extern NetworkManager NetworkMgr;
+extern AppNetworkManager NetworkMgr;
