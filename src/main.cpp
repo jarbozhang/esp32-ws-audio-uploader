@@ -21,6 +21,7 @@ void onHookEvent(const char* eventName) {
     }
 }
 
+#ifndef PIO_UNIT_TEST
 void setup() {
     Serial.begin(115200);
     delay(200);
@@ -71,3 +72,4 @@ void loop() {
 
     delay(1);
 }
+#endif
