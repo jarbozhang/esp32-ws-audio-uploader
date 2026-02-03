@@ -2,3 +2,6 @@
 .vscode/
 .DS_Store
 .claude/
+
+# Secrets (credentials) – copy src/secrets.h.template → src/secrets.h to set up
+src/secrets.h
