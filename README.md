@@ -7,7 +7,9 @@ ESP32-S3 固件，通过 I2S 麦克风（M5Stack Atom EchoS3R / M5Unified）录�
 
 ## 功能说明
 
-- 连接 WiFi
+- **模块化代码结构**：将 `main.cpp` 拆分为 `Config.h`, `AudioManager`, `NetworkManager` 等模块，提升代码可读性和可维护性。
+- **多网络 WiFi 连接**：支持配置多个 WiFi 网络，设备将自动扫描并连接到可用的网络。
+- **mDNS 服务发现**：通过 mDNS 自动发现 Mac 服务器，无需硬编码 IP 地址。
 - 通过 WebSocket 连接到 Mac 服务器：`ws://<mac-host>:8765/ws`
 - 推送录音（Push-to-Talk）：
   - 按住 BtnA 开始录音
@@ -17,14 +19,19 @@ ESP32-S3 固件，通过 I2S 麦克风（M5Stack Atom EchoS3R / M5Unified）录�
 
 ## 配置
 
-编辑 `src/main.cpp`：
-- `WIFI_SSID`、`WIFI_PASS`
-- `AUTH_TOKEN`（必须与 Mac 服务器的 `AUTH_TOKEN` 一致）
-
-Mac 主机地址：
-- 默认使用 mDNS 主机名：`jiabos-macbook-pro-2.local`
-- 可在编译时覆盖：
-  - PlatformIO 编译标志：`-DWS_HOSTNAME=\"your-mac.local\"`
+主要配置现在集中在 `src/Config.h` 文件中：
+- **WiFi 网络**：在 `Config.h` 中定义 `WIFI_NETWORKS` 列表，包含 SSID 和密码。
+  ```cpp
+  static const std::vector<WiFiCredential> WIFI_NETWORKS = {
+      {"YOUR_WIFI_SSID_1", "YOUR_WIFI_PASS_1"},
+      {"YOUR_WIFI_SSID_2", "YOUR_WIFI_PASS_2"}
+  };
+  ```
+- **认证令牌**：`AUTH_TOKEN`（必须与 Mac 服务器的 `AUTH_TOKEN` 一致）
+- **Mac 主机地址**：
+  - 默认使用 mDNS 主机名：`jiabos-macbook-pro-2.local`
+  - 可在 `Config.h` 中修改 `WS_HOSTNAME`，或在编译时覆盖：
+    - PlatformIO 编译标志：`-DWS_HOSTNAME="your-mac.local"`
 
 ## 协议（ASR）
 
@@ -90,7 +97,7 @@ pip install platformio pyyaml          # pyyaml 是 espressif32 平台构建器�
 ```bash
 pio run                  # 仅编译（首次运行时下载所有依赖）
 pio run -t upload        # 编译并刷写固件到设备
-pio device monitor       # 打开串口监控（115200 baud）
+pio device monitor       # 打开串口监控（11200 baud）
 ```
 
 ### 已验证的构建输出（2026-02-03）
