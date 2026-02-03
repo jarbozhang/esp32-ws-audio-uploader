@@ -25,12 +25,73 @@ Plans:
 - [x] Refactor and Connectivity Upgrade (run /gsd:plan-phase 2 to break down)
 
 **Details:**
+
 - Split logic from single file into modules.
+
 - Support list of WiFi credentials for sequential connection attempts.
+
 - Implement mDNS to automatically discover server (e.g., hostname.local) instead of hardcoded IP.
 
 
 
+### Phase 3: Generate Testing Methods
+
+
+
+
+
+
+
+**Goal:** Establish comprehensive testing strategies and methods for the refactored system.
+
+
+
+**Depends on:** Phase 2
+
+
+
+**Status:** Completed
+
+
+
+**Plans:** 1 plans
+
+
+
+
+
+
+
+Plans:
+
+
+
+- [x] Generate Testing Methods (run /gsd:plan-phase 3 to break down)
+
+
+
+
+
+
+
+**Details:**
+
+
+
+- Identify applicable testing methods (Unit, Integration, E2E, Hardware-in-the-Loop).
+
+
+
+- Define testing procedures for Audio, Network, and System Integration.
+
+
+
+- Document manual verification steps and potential automation strategies.
+
+
+
 ---
+
+
 
 ## Future Milestones
