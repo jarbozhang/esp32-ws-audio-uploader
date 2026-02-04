@@ -1,4 +1,5 @@
 #include "NetworkManager.h"
+#include "AudioManager.h"
 
 AppNetworkManager NetworkMgr;
 
@@ -179,6 +180,7 @@ void AppNetworkManager::webSocketEvent(WStype_t type, uint8_t *payload, size_t l
   case WStype_CONNECTED:
     _wsConnected = true;
     Serial.println("WS connected");
+    AudioMgr.queueBeep(BEEP_START);
     break;
   case WStype_TEXT: {
     String s;

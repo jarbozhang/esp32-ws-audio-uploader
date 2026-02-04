@@ -11,14 +11,31 @@ static String makeReqId() {
 static String currentReqId;
 static int16_t audioBuf[CHUNK_SAMPLES];
 
-// Keep-alive state
+// Power management
+static const unsigned long AUTO_SHUTDOWN_MS = 30 * 60 * 1000; // 30 minutes
 static unsigned long lastActivityMs = 0;
+
+// Keep-alive state
 static unsigned long lastKeepaliveMs = 0;
 static bool keepalivePulseActive = false;
 static unsigned long pulseStartMs = 0;
 
 static void updateActivity() {
     lastActivityMs = millis();
+}
+
+static void checkAutoShutdown() {
+    if ((millis() - lastActivityMs) > AUTO_SHUTDOWN_MS) {
+        Serial.println("Auto shutdown timeout reached. Disabling WiFi...");
+        AudioMgr.queueBeep(BEEP_STOP); // Shutdown beep
+        delay(500); // Give time for beep
+        WiFi.disconnect(true);
+        WiFi.mode(WIFI_OFF);
+        // Enter infinite loop to stop activity
+        while (true) {
+            delay(1000);
+        }
+    }
 }
 
 static void keepAliveLoop() {
@@ -77,11 +94,14 @@ __attribute__((weak)) void setup() {
     pinMode(BTN_REJECT_PIN,      INPUT_PULLUP);
     pinMode(BTN_SWITCH_MODEL_PIN, INPUT_PULLUP);
     pinMode(BTN_AUTO_APPROVE_PIN, INPUT_PULLUP);
+
+    updateActivity();
 }
 
 __attribute__((weak)) void loop() {
     AudioMgr.update();
     NetworkMgr.loop();
+    checkAutoShutdown();
 
     // --- External control buttons (edge-triggered, active LOW) ---
     {
@@ -105,6 +125,7 @@ __attribute__((weak)) void loop() {
             if (cur == LOW && lastState[i] == HIGH && (now - lastPressMs[i]) > 15) {
                 Serial.printf("%s button pressed\n", buttons[i].label);
                 lastPressMs[i] = now;
+                updateActivity(); // Activity detected
                 if (NetworkMgr.isConnected()) {
                     (NetworkMgr.*(buttons[i].handler))();
                 } else {
@@ -119,6 +140,7 @@ __attribute__((weak)) void loop() {
     // M5.update() is called inside AudioMgr.update()
 
     if (!AudioMgr.isRecording() && M5.BtnA.wasPressed()) {
+        updateActivity(); // Activity detected
         if (!NetworkMgr.isConnected()) {
             Serial.println("BtnA pressed but WS not connected");
         } else {

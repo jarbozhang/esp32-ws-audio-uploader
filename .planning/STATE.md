@@ -3,8 +3,8 @@
 ## Current Position
 - **Current Milestone**: v0.1 Initial
 - **Next Phase**: Phase 4 (TBD)
-- **Overall Status**: Phase 3 Completed (Tests Compiled); Quick-001 Completed (4 GPIO buttons); Quick-002 Completed (credentials externalized); Quick-003 Completed (WiFi power settings)
-- **Last activity**: 2026-02-04 - Completed quick-003 (WiFi power settings)
+- **Overall Status**: Phase 3 Completed (Tests Compiled); Quick-001 Completed (4 GPIO buttons); Quick-002 Completed (credentials externalized); Quick-003 Completed (WiFi power settings); Quick-004 Completed (Connection beep & Auto shutdown)
+- **Last activity**: 2026-02-04 - Completed quick-004 (Connection beep & Auto shutdown)
 
 ## Quick Tasks
 - quick-001 Completed: 4 external GPIO buttons (pins 5/6/7/8) wired to WebSocket approve/reject/switch_model/toggle_auto_approve commands
@@ -18,6 +18,9 @@
 - quick-003 Completed: WiFi TX power set to max and sleep mode disabled to prevent battery bank standby
   - Summary: `.planning/quick/003-check-wifi-power-settings/003-SUMMARY.md`
   - Decisions: `WiFi.setTxPower(WIFI_POWER_19_5dBm)` and `WiFi.setSleep(false)`
+- quick-004 Completed: Connection beep and 30-minute auto shutdown (WiFi off)
+  - Summary: `.planning/quick/004-add-connection-beep-and-auto-shutdown/004-SUMMARY.md`
+  - Decisions: Play `BEEP_START` on WS connect; `WiFi.mode(WIFI_OFF)` after 30 mins inactivity
 
 ## Accumulated Context
 
