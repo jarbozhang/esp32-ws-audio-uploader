@@ -32,3 +32,13 @@ static constexpr uint32_t MAX_RECORD_MS = 8000;
 #define BTN_REJECT_PIN       6
 #define BTN_SWITCH_MODEL_PIN 7
 #define BTN_AUTO_APPROVE_PIN 8
+
+// Keep-alive: prevent power bank auto-standby
+// Pulse interval: how often to draw current (ms)
+static constexpr uint32_t KEEPALIVE_PULSE_INTERVAL_MS = 30000;  // 30 seconds
+// Pulse duration: how long to keep load on (ms)
+static constexpr uint32_t KEEPALIVE_PULSE_DURATION_MS = 100;    // 100ms
+// Idle timeout: stop keep-alive after this much inactivity (ms)
+static constexpr uint32_t KEEPALIVE_IDLE_TIMEOUT_MS = 3600000;  // 1 hour
+// GPIO pin for load (use onboard LED or external resistor)
+#define KEEPALIVE_PIN 48  // ESP32-S3 onboard RGB LED data pin (or change to your pin)

@@ -45,7 +45,7 @@
   "type": "start",
   "token": "...",
   "reqId": "...",
-  "mode": "return_only",
+  "mode": "paste",
   "format": "pcm_s16le",
   "sampleRate": 16000,
   "channels": 1,

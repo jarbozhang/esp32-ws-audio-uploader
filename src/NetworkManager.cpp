@@ -26,24 +26,29 @@ void AppNetworkManager::connectWiFi() {
 }
 
 void AppNetworkManager::resolveAndConnect() {
-    if (!MDNS.begin("esp32-client")) {
-        Serial.println("Error setting up MDNS responder!");
+    IPAddress ip;
+
+    // Check if WS_HOST is already an IP address
+    if (ip.fromString(WS_HOST)) {
+        Serial.printf("Using direct IP: %s\n", WS_HOST);
+    } else {
+        // Need mDNS resolution for hostname
+        if (!MDNS.begin("esp32-client")) {
+            Serial.println("Error setting up MDNS responder!");
+        }
+
+        Serial.printf("Resolving host: %s\n", WS_HOST);
+        ip = MDNS.queryHost(WS_HOST);
     }
-    
-    Serial.printf("Resolving host: %s\n", WS_HOST);
-    // MDNS.queryHost blocks
-    IPAddress ip = MDNS.queryHost(WS_HOST);
-    
+
     if (ip != IPAddress()) {
-        Serial.print("Resolved IP: ");
+        Serial.print("Server IP: ");
         Serial.println(ip);
         _serverIP = ip;
         _ipResolved = true;
-        
+
         // Connect WS
         _ws.begin(_serverIP, WS_PORT, WS_PATH);
-        // We need to bind the member function, but WebSocketsClient uses a C-style callback or std::function
-        // The library supports std::function so we can use a lambda capture
         _ws.onEvent([this](WStype_t type, uint8_t * payload, size_t length) {
             this->webSocketEvent(type, payload, length);
         });
@@ -78,7 +83,7 @@ void AppNetworkManager::sendStart(String reqId) {
     doc["type"] = "start";
     doc["token"] = AUTH_TOKEN;
     doc["reqId"] = reqId;
-    doc["mode"] = "return_only";
+    doc["mode"] = "paste";
     doc["format"] = FORMAT;
     doc["sampleRate"] = SAMPLE_RATE;
     doc["channels"] = CHANNELS;

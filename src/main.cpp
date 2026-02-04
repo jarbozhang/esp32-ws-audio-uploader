@@ -11,6 +11,47 @@ static String makeReqId() {
 static String currentReqId;
 static int16_t audioBuf[CHUNK_SAMPLES];
 
+// Keep-alive state
+static unsigned long lastActivityMs = 0;
+static unsigned long lastKeepaliveMs = 0;
+static bool keepalivePulseActive = false;
+static unsigned long pulseStartMs = 0;
+
+static void updateActivity() {
+    lastActivityMs = millis();
+}
+
+static void keepAliveLoop() {
+    unsigned long now = millis();
+
+    // Check if we're within idle timeout
+    if ((now - lastActivityMs) > KEEPALIVE_IDLE_TIMEOUT_MS) {
+        // Idle too long, allow power bank to sleep
+        if (keepalivePulseActive) {
+            digitalWrite(KEEPALIVE_PIN, LOW);
+            keepalivePulseActive = false;
+        }
+        return;
+    }
+
+    // Handle active pulse
+    if (keepalivePulseActive) {
+        if ((now - pulseStartMs) >= KEEPALIVE_PULSE_DURATION_MS) {
+            digitalWrite(KEEPALIVE_PIN, LOW);
+            keepalivePulseActive = false;
+        }
+        return;
+    }
+
+    // Check if it's time for next pulse
+    if ((now - lastKeepaliveMs) >= KEEPALIVE_PULSE_INTERVAL_MS) {
+        digitalWrite(KEEPALIVE_PIN, HIGH);
+        keepalivePulseActive = true;
+        pulseStartMs = now;
+        lastKeepaliveMs = now;
+    }
+}
+
 void onHookEvent(const char* eventName) {
     if (!strcmp(eventName, "PermissionRequest")) {
         AudioMgr.queueBeep(BEEP_PERMISSION);
