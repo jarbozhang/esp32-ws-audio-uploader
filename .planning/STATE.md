@@ -3,8 +3,8 @@
 ## Current Position
 - **Current Milestone**: v0.1 Initial
 - **Next Phase**: Phase 4 (TBD)
-- **Overall Status**: Phase 3 Completed (Tests Compiled); Quick-001 to Quick-010 Completed; Quick-011 Completed (Increase audio delays/volume)
-- **Last activity**: 2026-02-04 - Completed quick-011 (Increase audio delays/volume)
+- **Overall Status**: Phase 3 Completed (Tests Compiled); Quick-001 to Quick-012 Completed
+- **Last activity**: 2026-02-04 - Completed quick-012 (mDNS hostname discovery fix)
 
 ## Quick Tasks
 - quick-001 Completed: 4 external GPIO buttons (pins 5/6/7/8) wired to WebSocket approve/reject/switch_model/toggle_auto_approve commands
@@ -42,6 +42,9 @@
 - quick-011 Completed: Increase audio delays and volume
   - Summary: `.planning/quick/011-increase-audio-delays-and-volume/011-SUMMARY.md`
   - Decisions: Delays up to 100ms, volume 255.
+- quick-012 Completed: Fix mDNS hostname resolution with .local stripping and retry logic
+  - Summary: `.planning/quick/012-use-mdns-to-discover-websocket-server-in/012-SUMMARY.md`
+  - Decisions: Strip .local before queryHost(); 5 retries 1s backoff; periodic recheck 5 min with auto-reconnect on IP change.
 
 ## Accumulated Context
 
@@ -55,6 +58,6 @@
 - Roadmap initialized with "v0.1 Initial" milestone and "Phase 1: Basic Setup and Connectivity"
 
 ### Session Continuity
-- Last session: 2026-02-03T08:48:10Z
-- Stopped at: Completed quick-002
+- Last session: 2026-02-04T13:00:40Z
+- Stopped at: Completed quick-012
 - Resume file: None
