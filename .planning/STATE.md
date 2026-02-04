@@ -3,8 +3,8 @@
 ## Current Position
 - **Current Milestone**: v0.1 Initial
 - **Next Phase**: Phase 4 (TBD)
-- **Overall Status**: Phase 3 Completed (Tests Compiled); Quick-001 Completed; Quick-002 Completed; Quick-003 Completed; Quick-004 Completed; Quick-005 Completed (Fix beep compile error)
-- **Last activity**: 2026-02-04 - Completed quick-005 (Fix beep compile error)
+- **Overall Status**: Phase 3 Completed (Tests Compiled); Quick-001 Completed; Quick-002 Completed; Quick-003 Completed; Quick-004 Completed; Quick-005 Completed; Quick-006 Completed (Debug beep)
+- **Last activity**: 2026-02-04 - Completed quick-006 (Debug beep)
 
 ## Quick Tasks
 - quick-001 Completed: 4 external GPIO buttons (pins 5/6/7/8) wired to WebSocket approve/reject/switch_model/toggle_auto_approve commands
@@ -24,6 +24,9 @@
 - quick-005 Completed: Fix compile error for BEEP_START
   - Summary: `.planning/quick/005-fix-beep-compile-error/005-SUMMARY.md`
   - Decisions: Added `BEEP_START` to `BeepKind` enum and implemented its pattern (2400Hz, 100ms) in `AudioManager`.
+- quick-006 Completed: Debug connection beep silence
+  - Summary: `.planning/quick/006-debug-beep-on-connect/006-SUMMARY.md`
+  - Decisions: Added explicit `M5.Speaker.setVolume(128)` and serial debug logs to `AudioManager`.
 
 ## Accumulated Context
 

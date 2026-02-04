@@ -49,9 +49,12 @@ void AudioManager::queueBeep(BeepKind kind) {
     }
     
     // If not recording, play immediately
+    Serial.printf("AudioMgr: Playing beep kind %d immediate\n", kind);
+    
     // Need to temporarily switch to speaker
     M5.Mic.end();
     M5.Speaker.begin();
+    M5.Speaker.setVolume(128); // Ensure audible volume
     
     auto p = patternFor(kind);
     for (int i = 0; i < p.repeat; i++) {
@@ -69,6 +72,7 @@ void AudioManager::playPendingBeeps() {
     // Switch to speaker
     M5.Mic.end();
     M5.Speaker.begin();
+    M5.Speaker.setVolume(128);
 
     auto playN = [&](BeepKind k, uint8_t n) {
         auto p = patternFor(k);
