@@ -60,7 +60,9 @@ void AudioManager::playPendingBeeps() {
 
     // Switch to speaker
     M5.Mic.end();
+    delay(10); // Stabilize
     M5.Speaker.begin();
+    delay(10); // Stabilize
     M5.Speaker.setVolume(128);
 
     auto playN = [&](BeepKind k, uint8_t n) {

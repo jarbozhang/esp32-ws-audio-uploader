@@ -3,8 +3,8 @@
 ## Current Position
 - **Current Milestone**: v0.1 Initial
 - **Next Phase**: Phase 4 (TBD)
-- **Overall Status**: Phase 3 Completed (Tests Compiled); Quick-001 to Quick-008 Completed; Quick-009 Completed (Deep debug beep)
-- **Last activity**: 2026-02-04 - Completed quick-009 (Deep debug beep)
+- **Overall Status**: Phase 3 Completed (Tests Compiled); Quick-001 to Quick-009 Completed; Quick-010 Completed (Stabilize audio switching)
+- **Last activity**: 2026-02-04 - Completed quick-010 (Stabilize audio switching)
 
 ## Quick Tasks
 - quick-001 Completed: 4 external GPIO buttons (pins 5/6/7/8) wired to WebSocket approve/reject/switch_model/toggle_auto_approve commands
@@ -36,6 +36,9 @@
 - quick-009 Completed: Deep debug instrumentation for beep failure
   - Summary: `.planning/quick/009-deep-debug-beep-failure/009-SUMMARY.md`
   - Decisions: Added comprehensive `DEBUG:` logs and startup beep test.
+- quick-010 Completed: Stabilize Mic/Speaker switching
+  - Summary: `.planning/quick/010-stabilize-audio-switching/010-SUMMARY.md`
+  - Decisions: Added `delay(10)` after `Mic.end` and `Speaker.begin` to fix potential I2S race condition.
 
 ## Accumulated Context
 
