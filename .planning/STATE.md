@@ -3,8 +3,8 @@
 ## Current Position
 - **Current Milestone**: v0.1 Initial
 - **Next Phase**: Phase 4 (TBD)
-- **Overall Status**: Phase 3 Completed (Tests Compiled); Quick-001 Completed; Quick-002 Completed; Quick-003 Completed; Quick-004 Completed; Quick-005 Completed; Quick-006 Completed (Debug beep)
-- **Last activity**: 2026-02-04 - Completed quick-006 (Debug beep)
+- **Overall Status**: Phase 3 Completed (Tests Compiled); Quick-001 to Quick-006 Completed; Quick-007 Completed (Refactor connection beep)
+- **Last activity**: 2026-02-04 - Completed quick-007 (Refactor connection beep)
 
 ## Quick Tasks
 - quick-001 Completed: 4 external GPIO buttons (pins 5/6/7/8) wired to WebSocket approve/reject/switch_model/toggle_auto_approve commands
@@ -27,6 +27,9 @@
 - quick-006 Completed: Debug connection beep silence
   - Summary: `.planning/quick/006-debug-beep-on-connect/006-SUMMARY.md`
   - Decisions: Added explicit `M5.Speaker.setVolume(128)` and serial debug logs to `AudioManager`.
+- quick-007 Completed: Refactor connection beep to use callback
+  - Summary: `.planning/quick/007-use-hook-callback-for-connection-beep/007-SUMMARY.md`
+  - Decisions: Decoupled `NetworkManager` from `AudioMgr`; fires "Connected" hook event instead.
 
 ## Accumulated Context
 

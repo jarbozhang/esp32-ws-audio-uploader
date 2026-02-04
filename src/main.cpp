@@ -70,7 +70,9 @@ static void keepAliveLoop() {
 }
 
 void onHookEvent(const char* eventName) {
-    if (!strcmp(eventName, "PermissionRequest")) {
+    if (!strcmp(eventName, "Connected")) {
+        AudioMgr.queueBeep(BEEP_START);
+    } else if (!strcmp(eventName, "PermissionRequest")) {
         AudioMgr.queueBeep(BEEP_PERMISSION);
     } else if (!strcmp(eventName, "PostToolUseFailure")) {
         AudioMgr.queueBeep(BEEP_FAILURE);
