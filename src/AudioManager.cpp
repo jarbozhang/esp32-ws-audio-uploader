@@ -40,30 +40,10 @@ BeepPattern AudioManager::patternFor(BeepKind k) {
 }
 
 void AudioManager::queueBeep(BeepKind kind) {
-    if (_recording) {
-        if (kind == BEEP_STOP) _pendingStop++;
-        else if (kind == BEEP_PERMISSION) _pendingPermission++;
-        else if (kind == BEEP_FAILURE) _pendingFailure++;
-        else if (kind == BEEP_START) _pendingStart++;
-        return;
-    }
-    
-    // If not recording, play immediately
-    Serial.printf("AudioMgr: Playing beep kind %d immediate\n", kind);
-    
-    // Need to temporarily switch to speaker
-    M5.Mic.end();
-    M5.Speaker.begin();
-    M5.Speaker.setVolume(128); // Ensure audible volume
-    
-    auto p = patternFor(kind);
-    for (int i = 0; i < p.repeat; i++) {
-        M5.Speaker.tone(p.freq, p.ms);
-        delay(p.ms + p.gapMs);
-    }
-    
-    M5.Speaker.end();
-    M5.Mic.begin();
+    if (kind == BEEP_STOP) _pendingStop++;
+    else if (kind == BEEP_PERMISSION) _pendingPermission++;
+    else if (kind == BEEP_FAILURE) _pendingFailure++;
+    else if (kind == BEEP_START) _pendingStart++;
 }
 
 void AudioManager::playPendingBeeps() {
