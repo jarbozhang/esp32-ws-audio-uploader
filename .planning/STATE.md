@@ -3,8 +3,8 @@
 ## Current Position
 - **Current Milestone**: v0.1 Initial
 - **Next Phase**: Phase 4 (TBD)
-- **Overall Status**: Phase 3 Completed (Tests Compiled); Quick-001 to Quick-009 Completed; Quick-010 Completed (Stabilize audio switching)
-- **Last activity**: 2026-02-04 - Completed quick-010 (Stabilize audio switching)
+- **Overall Status**: Phase 3 Completed (Tests Compiled); Quick-001 to Quick-010 Completed; Quick-011 Completed (Increase audio delays/volume)
+- **Last activity**: 2026-02-04 - Completed quick-011 (Increase audio delays/volume)
 
 ## Quick Tasks
 - quick-001 Completed: 4 external GPIO buttons (pins 5/6/7/8) wired to WebSocket approve/reject/switch_model/toggle_auto_approve commands
@@ -39,6 +39,9 @@
 - quick-010 Completed: Stabilize Mic/Speaker switching
   - Summary: `.planning/quick/010-stabilize-audio-switching/010-SUMMARY.md`
   - Decisions: Added `delay(10)` after `Mic.end` and `Speaker.begin` to fix potential I2S race condition.
+- quick-011 Completed: Increase audio delays and volume
+  - Summary: `.planning/quick/011-increase-audio-delays-and-volume/011-SUMMARY.md`
+  - Decisions: Delays up to 100ms, volume 255.
 
 ## Accumulated Context
 

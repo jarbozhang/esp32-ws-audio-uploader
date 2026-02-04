@@ -60,10 +60,11 @@ void AudioManager::playPendingBeeps() {
 
     // Switch to speaker
     M5.Mic.end();
-    delay(10); // Stabilize
+    delay(100); // Stabilize
     M5.Speaker.begin();
-    delay(10); // Stabilize
-    M5.Speaker.setVolume(128);
+    delay(100); // Stabilize
+    M5.Speaker.setVolume(255);
+    Serial.printf("DEBUG: [Audio] Volume set to: %d\n", M5.Speaker.getVolume());
 
     auto playN = [&](BeepKind k, uint8_t n) {
         auto p = patternFor(k);
