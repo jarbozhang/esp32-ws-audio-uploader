@@ -3,8 +3,8 @@
 ## Current Position
 - **Current Milestone**: v0.1 Initial
 - **Next Phase**: Phase 4 (TBD)
-- **Overall Status**: Phase 3 Completed (Tests Compiled); Quick-001 Completed (4 GPIO buttons); Quick-002 Completed (credentials externalized)
-- **Last activity**: 2026-02-03 - Completed quick-002 (externalize WiFi credentials to secrets.h)
+- **Overall Status**: Phase 3 Completed (Tests Compiled); Quick-001 Completed (4 GPIO buttons); Quick-002 Completed (credentials externalized); Quick-003 Completed (WiFi power settings)
+- **Last activity**: 2026-02-04 - Completed quick-003 (WiFi power settings)
 
 ## Quick Tasks
 - quick-001 Completed: 4 external GPIO buttons (pins 5/6/7/8) wired to WebSocket approve/reject/switch_model/toggle_auto_approve commands
@@ -15,6 +15,9 @@
 - quick-002 Completed: WiFi credentials (WIFI_NETWORKS, AUTH_TOKEN, WS_HOSTNAME) moved from Config.h to gitignored secrets.h; secrets.h.template committed as onboarding guide
   - Summary: `.planning/quick/002-externalize-wifi-credentials-to-config-f/002-SUMMARY.md`
   - Decisions: WiFiCredential struct co-located with WIFI_NETWORKS in secrets.h; layered #ifndef for WS_HOSTNAME (build_flags > secrets.h > fallback); AUTH_TOKEN stays static const char*
+- quick-003 Completed: WiFi TX power set to max and sleep mode disabled to prevent battery bank standby
+  - Summary: `.planning/quick/003-check-wifi-power-settings/003-SUMMARY.md`
+  - Decisions: `WiFi.setTxPower(WIFI_POWER_19_5dBm)` and `WiFi.setSleep(false)`
 
 ## Accumulated Context
 

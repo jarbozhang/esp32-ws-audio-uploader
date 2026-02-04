@@ -23,6 +23,11 @@ void AppNetworkManager::connectWiFi() {
     Serial.println();
     Serial.print("WiFi connected, IP: ");
     Serial.println(WiFi.localIP());
+
+    // Maximize power to keep external battery awake
+    WiFi.setTxPower(WIFI_POWER_19_5dBm);
+    WiFi.setSleep(false);
+    Serial.println("WiFi: Max TX power set, Power Save disabled");
 }
 
 void AppNetworkManager::resolveAndConnect() {
