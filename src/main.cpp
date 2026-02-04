@@ -70,7 +70,9 @@ static void keepAliveLoop() {
 }
 
 void onHookEvent(const char* eventName) {
+    Serial.printf("DEBUG: [Main] Hook event: %s\n", eventName);
     if (!strcmp(eventName, "Connected")) {
+        Serial.println("DEBUG: [Main] Queueing BEEP_START");
         AudioMgr.queueBeep(BEEP_START);
     } else if (!strcmp(eventName, "PermissionRequest")) {
         AudioMgr.queueBeep(BEEP_PERMISSION);
@@ -87,6 +89,8 @@ __attribute__((weak)) void setup() {
     delay(200);
 
     AudioMgr.begin();
+    Serial.println("DEBUG: [Setup] Testing startup beep...");
+    AudioMgr.queueBeep(BEEP_START);
 
     NetworkMgr.setHookCallback(onHookEvent);
     NetworkMgr.begin();

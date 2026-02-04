@@ -21,6 +21,11 @@ void AudioManager::update() {
     
     // Handle pending beeps if not recording
     if (!_recording) {
+        static unsigned long lastLog = 0;
+        if (_pendingStart > 0 && millis() - lastLog > 1000) {
+             Serial.printf("DEBUG: [Audio] Update loop. Pending Start: %d\n", _pendingStart);
+             lastLog = millis();
+        }
         playPendingBeeps();
     }
 }
@@ -40,6 +45,7 @@ BeepPattern AudioManager::patternFor(BeepKind k) {
 }
 
 void AudioManager::queueBeep(BeepKind kind) {
+    Serial.printf("DEBUG: [Audio] Queueing kind %d. PendingStart before: %d\n", kind, _pendingStart);
     if (kind == BEEP_STOP) _pendingStop++;
     else if (kind == BEEP_PERMISSION) _pendingPermission++;
     else if (kind == BEEP_FAILURE) _pendingFailure++;
@@ -48,6 +54,9 @@ void AudioManager::queueBeep(BeepKind kind) {
 
 void AudioManager::playPendingBeeps() {
     if (!_pendingStop && !_pendingPermission && !_pendingFailure && !_pendingStart) return;
+
+    Serial.printf("DEBUG: [Audio] Playing pending. Start=%d, Perm=%d, Fail=%d, Stop=%d\n", 
+                _pendingStart, _pendingPermission, _pendingFailure, _pendingStop);
 
     // Switch to speaker
     M5.Mic.end();

@@ -179,7 +179,9 @@ void AppNetworkManager::webSocketEvent(WStype_t type, uint8_t *payload, size_t l
   case WStype_CONNECTED:
     _wsConnected = true;
     Serial.println("WS connected");
+    Serial.println("DEBUG: [NM] WS Connected event received");
     if (_hookCallback) {
+        Serial.println("DEBUG: [NM] Calling Connected hook");
         _hookCallback("Connected");
     }
     break;
