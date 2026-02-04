@@ -42,3 +42,6 @@ static constexpr uint32_t KEEPALIVE_PULSE_DURATION_MS = 100;    // 100ms
 static constexpr uint32_t KEEPALIVE_IDLE_TIMEOUT_MS = 3600000;  // 1 hour
 // GPIO pin for load (use onboard LED or external resistor)
 #define KEEPALIVE_PIN 48  // ESP32-S3 onboard RGB LED data pin (or change to your pin)
+
+// mDNS periodic re-resolution interval (in case server IP changes)
+static constexpr uint32_t MDNS_RECHECK_INTERVAL_MS = 300000;  // 5 minutes

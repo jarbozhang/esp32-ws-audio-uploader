@@ -30,6 +30,14 @@ void AppNetworkManager::connectWiFi() {
     Serial.println("WiFi: Max TX power set, Power Save disabled");
 }
 
+String AppNetworkManager::stripLocalSuffix(const char* hostname) {
+    String h = hostname;
+    if (h.endsWith(".local")) {
+        h = h.substring(0, h.length() - 6);
+    }
+    return h;
+}
+
 void AppNetworkManager::resolveAndConnect() {
     IPAddress ip;
 
@@ -42,8 +50,17 @@ void AppNetworkManager::resolveAndConnect() {
             Serial.println("Error setting up MDNS responder!");
         }
 
-        Serial.printf("Resolving host: %s\n", WS_HOST);
-        ip = MDNS.queryHost(WS_HOST);
+        // Strip .local suffix — MDNS.queryHost() expects bare hostname
+        String hostBare = stripLocalSuffix(WS_HOST);
+        Serial.printf("Resolving host: %s\n", hostBare.c_str());
+
+        // Retry loop: up to 5 attempts with 1s backoff
+        for (int attempt = 0; attempt < 5; attempt++) {
+            ip = MDNS.queryHost(hostBare.c_str());
+            if (ip != IPAddress()) break;
+            Serial.printf("mDNS attempt %d failed, retrying...\n", attempt + 1);
+            delay(1000);
+        }
     }
 
     if (ip != IPAddress()) {
@@ -51,6 +68,7 @@ void AppNetworkManager::resolveAndConnect() {
         Serial.println(ip);
         _serverIP = ip;
         _ipResolved = true;
+        _lastResolveTime = millis();
 
         // Connect WS
         _ws.begin(_serverIP, WS_PORT, WS_PATH);
@@ -59,7 +77,7 @@ void AppNetworkManager::resolveAndConnect() {
         });
         _ws.setReconnectInterval(2000);
     } else {
-        Serial.println("mDNS resolution failed.");
+        Serial.println("mDNS resolution failed after 5 attempts.");
     }
 }
 
@@ -68,12 +86,33 @@ void AppNetworkManager::loop() {
     if (_wifiMulti.run() != WL_CONNECTED) {
         Serial.println("WiFi lost, reconnecting...");
     }
-    
-    // Ensure mDNS/WS
-    if (WiFi.status() == WL_CONNECTED && !_ipResolved) {
-         // Retry resolution occasionally? 
-         // For simplicity, just retry now
-         resolveAndConnect();
+
+    if (WiFi.status() == WL_CONNECTED) {
+        if (!_ipResolved) {
+            // Initial resolution not yet done — attempt now
+            resolveAndConnect();
+        } else {
+            // Periodic re-resolution: re-query mDNS in case server IP changed
+            uint32_t now = millis();
+            if (now - _lastResolveTime >= MDNS_RECHECK_INTERVAL_MS) {
+                Serial.println("mDNS recheck: re-resolving host...");
+                IPAddress ip;
+                if (!ip.fromString(WS_HOST)) {
+                    // Only re-resolve if WS_HOST is a hostname, not a direct IP
+                    String hostBare = stripLocalSuffix(WS_HOST);
+                    ip = MDNS.queryHost(hostBare.c_str());
+                    if (ip != IPAddress() && ip != _serverIP) {
+                        Serial.print("mDNS recheck: IP changed to ");
+                        Serial.println(ip);
+                        _serverIP = ip;
+                        // Reconnect WebSocket with new IP
+                        _ws.disconnect();
+                        _ws.begin(_serverIP, WS_PORT, WS_PATH);
+                    }
+                }
+                _lastResolveTime = now;
+            }
+        }
     }
 
     _ws.loop();

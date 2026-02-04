@@ -42,6 +42,9 @@ private:
     // mDNS resolved IP
     IPAddress _serverIP;
     bool _ipResolved = false;
+    uint32_t _lastResolveTime = 0;  // millis() of last successful mDNS resolution
+
+    String stripLocalSuffix(const char* hostname);
 
     HookCallback _hookCallback;
     
