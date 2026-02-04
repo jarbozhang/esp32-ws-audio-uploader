@@ -3,8 +3,8 @@
 ## Current Position
 - **Current Milestone**: v0.1 Initial
 - **Next Phase**: Phase 4 (TBD)
-- **Overall Status**: Phase 3 Completed (Tests Compiled); Quick-001 Completed (4 GPIO buttons); Quick-002 Completed (credentials externalized); Quick-003 Completed (WiFi power settings); Quick-004 Completed (Connection beep & Auto shutdown)
-- **Last activity**: 2026-02-04 - Completed quick-004 (Connection beep & Auto shutdown)
+- **Overall Status**: Phase 3 Completed (Tests Compiled); Quick-001 Completed; Quick-002 Completed; Quick-003 Completed; Quick-004 Completed; Quick-005 Completed (Fix beep compile error)
+- **Last activity**: 2026-02-04 - Completed quick-005 (Fix beep compile error)
 
 ## Quick Tasks
 - quick-001 Completed: 4 external GPIO buttons (pins 5/6/7/8) wired to WebSocket approve/reject/switch_model/toggle_auto_approve commands
@@ -21,6 +21,9 @@
 - quick-004 Completed: Connection beep and 30-minute auto shutdown (WiFi off)
   - Summary: `.planning/quick/004-add-connection-beep-and-auto-shutdown/004-SUMMARY.md`
   - Decisions: Play `BEEP_START` on WS connect; `WiFi.mode(WIFI_OFF)` after 30 mins inactivity
+- quick-005 Completed: Fix compile error for BEEP_START
+  - Summary: `.planning/quick/005-fix-beep-compile-error/005-SUMMARY.md`
+  - Decisions: Added `BEEP_START` to `BeepKind` enum and implemented its pattern (2400Hz, 100ms) in `AudioManager`.
 
 ## Accumulated Context
 

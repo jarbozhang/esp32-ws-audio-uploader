@@ -31,6 +31,8 @@ BeepPattern AudioManager::patternFor(BeepKind k) {
         return {2000, 80, 2, 60};
     case BEEP_FAILURE:
         return {800, 200, 3, 80};
+    case BEEP_START:
+        return {2400, 100, 1, 0}; // Single high pitch for start
     case BEEP_STOP:
     default:
         return {1800, 60, 2, 80};
@@ -42,6 +44,7 @@ void AudioManager::queueBeep(BeepKind kind) {
         if (kind == BEEP_STOP) _pendingStop++;
         else if (kind == BEEP_PERMISSION) _pendingPermission++;
         else if (kind == BEEP_FAILURE) _pendingFailure++;
+        else if (kind == BEEP_START) _pendingStart++;
         return;
     }
     
@@ -61,7 +64,7 @@ void AudioManager::queueBeep(BeepKind kind) {
 }
 
 void AudioManager::playPendingBeeps() {
-    if (!_pendingStop && !_pendingPermission && !_pendingFailure) return;
+    if (!_pendingStop && !_pendingPermission && !_pendingFailure && !_pendingStart) return;
 
     // Switch to speaker
     M5.Mic.end();
@@ -78,12 +81,13 @@ void AudioManager::playPendingBeeps() {
         }
     };
 
-    // Priority: permission > failure > stop
+    // Priority: start > permission > failure > stop
+    playN(BEEP_START, _pendingStart);
     playN(BEEP_PERMISSION, _pendingPermission);
     playN(BEEP_FAILURE, _pendingFailure);
     playN(BEEP_STOP, _pendingStop);
 
-    _pendingStop = _pendingPermission = _pendingFailure = 0;
+    _pendingStop = _pendingPermission = _pendingFailure = _pendingStart = 0;
 
     M5.Speaker.end();
     M5.Mic.begin();
@@ -92,7 +96,7 @@ void AudioManager::playPendingBeeps() {
 void AudioManager::startRecording() {
     _recording = true;
     _recordStartMs = millis();
-    _pendingStop = _pendingPermission = _pendingFailure = 0;
+    _pendingStop = _pendingPermission = _pendingFailure = _pendingStart = 0;
 }
 
 void AudioManager::stopRecording() {

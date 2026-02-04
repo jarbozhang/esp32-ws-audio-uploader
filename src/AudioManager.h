@@ -7,6 +7,7 @@ enum BeepKind {
     BEEP_STOP,
     BEEP_PERMISSION,
     BEEP_FAILURE,
+    BEEP_START,
 };
 
 struct BeepPattern {
@@ -40,6 +41,7 @@ private:
     uint8_t _pendingStop = 0;
     uint8_t _pendingPermission = 0;
     uint8_t _pendingFailure = 0;
+    uint8_t _pendingStart = 0;
 };
 
 extern AudioManager AudioMgr;
