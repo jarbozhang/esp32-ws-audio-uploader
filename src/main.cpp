@@ -74,7 +74,7 @@ void onHookEvent(const char* eventName) {
     if (!strcmp(eventName, "Connected")) {
         Serial.println("DEBUG: [Main] Queueing BEEP_START");
         AudioMgr.queueBeep(BEEP_START);
-    } else if (!strcmp(eventName, "PermissionRequest")) {
+    } else if (!strcmp(eventName, "PermissionRequest") || !strcmp(eventName, "Notification")) {
         AudioMgr.queueBeep(BEEP_PERMISSION);
     } else if (!strcmp(eventName, "PostToolUseFailure")) {
         AudioMgr.queueBeep(BEEP_FAILURE);
