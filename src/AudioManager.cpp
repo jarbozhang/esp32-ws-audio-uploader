@@ -33,14 +33,14 @@ void AudioManager::update() {
 BeepPattern AudioManager::patternFor(BeepKind k) {
     switch (k) {
     case BEEP_PERMISSION:
-        return {2000, 80, 2, 60};
+        return {2000, 80, 2, 500};
     case BEEP_FAILURE:
-        return {800, 200, 3, 80};
+        return {800, 200, 3, 500};
     case BEEP_START:
         return {2400, 100, 1, 0}; // Single high pitch for start
     case BEEP_STOP:
     default:
-        return {1800, 60, 2, 80};
+        return {1800, 60, 2, 500};
     }
 }
 
@@ -63,7 +63,7 @@ void AudioManager::playPendingBeeps() {
     delay(100); // Stabilize
     M5.Speaker.begin();
     delay(100); // Stabilize
-    M5.Speaker.setVolume(255);
+    M5.Speaker.setVolume(64);
     Serial.printf("DEBUG: [Audio] Volume set to: %d\n", M5.Speaker.getVolume());
 
     auto playN = [&](BeepKind k, uint8_t n) {

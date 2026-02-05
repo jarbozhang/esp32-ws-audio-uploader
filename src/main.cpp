@@ -12,7 +12,7 @@ static String currentReqId;
 static int16_t audioBuf[CHUNK_SAMPLES];
 
 // Power management
-static const unsigned long AUTO_SHUTDOWN_MS = 30 * 60 * 1000; // 30 minutes
+static const unsigned long AUTO_SHUTDOWN_MS = 10 * 60 * 1000; // 30 minutes
 static unsigned long lastActivityMs = 0;
 
 // Keep-alive state
