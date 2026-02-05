@@ -1,142 +1,238 @@
-# 代码库结构
+# Codebase Structure
 
-**分析日期:** 2026-02-03
+**Analysis Date:** 2026-02-05
 
-## 目录布局
+## Directory Layout
 
 ```
 esp32-ws-audio-uploader/
-├── src/                    # C++ 源代码
-│   └── main.cpp           # 唯一的应用代码文件（完整实现）
-├── platformio.ini         # PlatformIO 构建配置
-├── README.md              # 项目说明和快速开始指南
-├── SPEC.md                # 协议规范文档
-├── LICENSE                # 许可证文件
-└── .gitignore             # Git 忽略规则
+├── src/                              # C++ source code
+│   ├── main.cpp                     # Application entry point, control flow, button handling
+│   ├── AudioManager.h               # Audio manager interface
+│   ├── AudioManager.cpp             # Audio manager implementation
+│   ├── NetworkManager.h             # Network manager interface
+│   ├── NetworkManager.cpp           # Network manager implementation
+│   ├── Config.h                     # Centralized compile-time constants
+│   ├── secrets.h                    # Runtime secrets (gitignored)
+│   └── secrets.h.template           # Template for secrets.h
+├── test/
+│   └── test_main.cpp                # Unity framework unit tests
+├── scripts/
+│   └── mock_server.py               # Python mock WebSocket server for testing
+├── .planning/                       # Planning and specification documents
+├── platformio.ini                   # PlatformIO build configuration
+├── README.md                        # User documentation and quick start
+├── SPEC.md                          # WebSocket protocol specification
+├── LICENSE                          # License file
+├── requirements.txt                 # Python dependencies for mock server
+└── .gitignore                       # Git ignore rules
 ```
 
-## 目录用途
+## Directory Purposes
 
-**src/ 目录:**
-- 用途: 包含所有 C++ 源代码
-- 包含: Arduino 草图和库代码
-- 关键文件: `main.cpp`
+**src/ directory:**
+- Purpose: Contains all C++ source files for ESP32 firmware
+- Contains: Application code, manager classes, configuration, secrets
+- Key files: `main.cpp` (182 lines), `AudioManager.cpp` (113 lines), `NetworkManager.cpp` (251 lines)
+- Total: ~726 lines of C++ code across 7 files
 
-## 关键文件位置
+**test/ directory:**
+- Purpose: On-device unit tests using Unity framework
+- Contains: Test cases for config loading, network/audio manager state
+- Run with: `pio test -e esp32-s3`
 
-**入口点:**
-- `src/main.cpp`: Arduino 主文件，包含 `setup()` 和 `loop()` 函数
+**scripts/ directory:**
+- Purpose: Testing utilities for development and verification
+- Contains: `mock_server.py` — lightweight Python WebSocket server simulating Mac ASR backend
+- Run with: `python scripts/mock_server.py`
 
-**配置:**
-- `platformio.ini`: PlatformIO 构建配置，指定硬件平台、库依赖、编译标志
+**.planning/ directory:**
+- Purpose: GSD-managed planning documents and phase specifications
+- Contains: Phase plans, summaries, codebase analysis (ARCHITECTURE.md, STRUCTURE.md, etc.)
 
-**文档:**
-- `README.md`: 用户说明、配置步骤、协议概述
-- `SPEC.md`: 详细的 WebSocket 消息协议规范
+## Key File Locations
 
-## 命名约定
+**Entry Points:**
+- `src/main.cpp`: Arduino entry point with `setup()` (lines 87-105) and `loop()` (lines 107-181)
 
-**文件:**
-- 单一主文件模式: `main.cpp`（Arduino 约定）
-- 配置文件: `platformio.ini`、`.gitignore`
+**Core Managers:**
+- `src/AudioManager.h`: Interface defining beep queueing, recording control (47 lines)
+- `src/AudioManager.cpp`: Implementation of microphone capture and beep sequencing (113 lines)
+- `src/NetworkManager.h`: Interface for WiFi, mDNS, WebSocket, message protocol (56 lines)
+- `src/NetworkManager.cpp`: Implementation of network connectivity and message dispatch (251 lines)
 
-**目录:**
-- `src/` - Arduino/PlatformIO 标准目录
-- `.git/` - Git 版本控制（自动生成）
-- `.claude/` - Claude 编辑器配置（自动生成）
+**Configuration:**
+- `src/Config.h`: Audio parameters (sample rate, chunk size), WebSocket endpoint, button pins, keep-alive timings (47 lines)
+- `src/secrets.h`: Auth token, WiFi credentials (gitignored, 30 lines)
+- `src/secrets.h.template`: Template showing required format for secrets
 
-**代码中的命名（C++）:**
-- **常量:** 全大写带下划线（如 `WIFI_SSID`、`SAMPLE_RATE`、`MAX_RECORD_MS`）
-- **全局变量:** 前缀 `static`，驼峰或下划线命名（如 `wsConnected`、`recording`、`currentReqId`）
-- **函数:** 驼峰命名法（如 `setupAudio()`、`recordOneChunkAndSend()`、`playPendingBeeps()`）
-- **结构体/Enum:** 驼峰命名（如 `BeepKind`、`BeepPattern`）
-- **数组:** 使用 `s` 前缀表示字符串（如 `recentIds[]`）
+**Build Configuration:**
+- `platformio.ini`: PlatformIO build config, target board (esp32-s3-devkitc-1), library dependencies (WebSockets, M5Unified, ArduinoJson)
 
-## 添加新代码的位置
+**Documentation:**
+- `README.md`: Features, configuration, protocol overview, build instructions
+- `SPEC.md`: Detailed WebSocket message protocol specification
 
-**新功能:**
-- 位置: `src/main.cpp` 中的合适逻辑位置
-- 示例：新的按钮处理 → 在 `loop()` 函数的按钮轮询部分添加
-- 示例：新的消息类型处理 → 在 `handleHookEvent()` 或 `webSocketEvent()` 中添加
+**Testing:**
+- `test/test_main.cpp`: Config validation and state machine tests (52 lines)
+- `scripts/mock_server.py`: Test server for protocol validation
+- `requirements.txt`: Python dependencies (websockets library)
 
-**新的 Beep 类型:**
-- 添加 `BeepKind` 枚举值
-- 在 `patternFor()` switch 语句中定义新的频率/持续时间
-- 在 `queueBeep()` 中添加对应的 pending 计数器逻辑
-- 在 `playPendingBeeps()` 的优先级顺序中定位
+## Naming Conventions
 
-**新的 Hook 事件类型:**
-- 在 `handleHookEvent()` 的事件名称检查中添加 `strcmp()` 分支
-- 决定触发哪种 Beep 或其他动作
-- 将动作传递给 `queueBeep()` 或其他处理函数
+**Files:**
+- Source files: `CamelCase.cpp` for implementations, `CamelCase.h` for headers
+- Configuration: `Config.h`, `secrets.h`
+- Test files: `test_*.cpp` following Arduino/PlatformIO convention
+- Entry point: `main.cpp` (Arduino standard)
 
-**WebSocket 协议扩展:**
-- 修改 `sendStart()` 改变启动消息体
-- 修改 `webSocketEvent()` 的 WStype_TEXT 处理新的响应类型
-- 修改 `handleHookEvent()` 处理新的 hook 字段
+**Directories:**
+- `src/` — Arduino/PlatformIO standard directory for source code
+- `test/` — Arduino/PlatformIO standard directory for tests
+- `scripts/` — Project-specific helper scripts
+- `.planning/` — GSD planning documents (dot-prefixed to separate from source)
 
-**音频格式变更:**
-- 修改 `SAMPLE_RATE`、`CHANNELS`、`BIT_DEPTH`、`FORMAT` 常量
-- 重新计算 `CHUNK_SAMPLES` 和 `CHUNK_BYTES`（保持 20ms 窗口）
-- 更新缓冲区大小（如果需要）
+**Code Symbols (C++):**
+- **Constants:** All-caps with underscores (e.g., `SAMPLE_RATE`, `MAX_RECORD_MS`, `KEEPALIVE_PULSE_INTERVAL_MS`)
+- **Global variables (file scope):** Lower camelCase with `static` keyword (e.g., `currentReqId`, `lastActivityMs`)
+- **Class member variables:** Lower camelCase with underscore prefix (e.g., `_recording`, `_wsConnected`, `_serverIP`)
+- **Functions:** camelCase (e.g., `updateActivity()`, `makeReqId()`, `sendStart()`, `recordOneChunk()`)
+- **Classes:** PascalCase (e.g., `AudioManager`, `AppNetworkManager`)
+- **Enums:** PascalCase (e.g., `BeepKind`, `WStype_t` from library)
+- **Structs:** PascalCase (e.g., `BeepPattern`)
 
-## 特殊目录
+## Where to Add New Code
 
-**src/:**
-- 用途: Arduino/PlatformIO 标准源目录
-- 生成: 否
-- 提交: 是（仅 `main.cpp`）
+**New Recording Feature:**
+- Primary logic: `src/AudioManager.cpp` (add method to AudioManager class)
+- Configuration: `src/Config.h` (add audio constant if needed)
+- Integration: `src/main.cpp` (call new AudioManager method in `loop()`)
 
-**.git/:**
-- 用途: Git 版本控制元数据
-- 生成: 是（自动）
-- 提交: 否（自动忽略）
+**New Hook Event Type:**
+- Server message definition: Update Mac server codebase
+- Handler: Add case in `onHookEvent()` callback in `src/main.cpp` (lines 72-84)
+- Beep type: Add enum value to `BeepKind` in `src/AudioManager.h`
+- Beep pattern: Add case in `patternFor()` in `src/AudioManager.cpp`
 
-**.claude/:**
-- 用途: Claude 编辑器本地配置
-- 生成: 是（自动）
-- 提交: 否（在 .gitignore 中）
+**New External Control Command:**
+- Protocol method: Add to `AppNetworkManager` class in `src/NetworkManager.h` (e.g., `sendNewCommand()`)
+- Implementation: Add JSON construction in `src/NetworkManager.cpp`
+- Button binding: Add to button array in `src/main.cpp` `loop()` function (lines 114-143)
 
-## 文件大小和复杂度
+**New Network Message Type:**
+- Protocol handler: Add case in `AppNetworkManager::webSocketEvent()` in `src/NetworkManager.cpp` (WStype_TEXT branch, around line 227)
+- Message builder: Add method to `AppNetworkManager` class (e.g., `sendNewMessageType()`)
+- JSON serialization: Use ArduinoJson pattern: create `StaticJsonDocument<size>`, populate fields, `serializeJson(doc, out)`, `_ws.sendTXT(out)`
 
-**src/main.cpp:** 308 行
-- 编译指令和包含: 行 1-6
-- 用户配置段: 行 8-23
-- 音频参数常量: 行 25-33
-- WebSocket 全局变量: 行 38
-- Beep 定义和辅助函数: 行 40-103
-- 录音状态变量: 行 65-72
-- Hook 去重环形缓冲区: 行 74-84
-- Beep 排队/播放函数: 行 86-132
-- 请求 ID 生成: 行 134-137
-- WebSocket 消息构建: 行 141-165
-- Hook 事件处理: 行 167-185
-- WebSocket 事件回调: 行 187-223
-- 硬件初始化: 行 225-237
-- 音频录制和发送: 行 239-250
-- Arduino setup: 行 252-272
-- Arduino loop: 行 274-307
+**New WiFi Configuration:**
+- Credentials: Add entry to `WIFI_NETWORKS` vector in `secrets.h`
+- Multi-AP support: Already handled by `WiFiMulti` — just add more entries
 
-## 代码组织模式
+**New Timing Parameter:**
+- Add constant to `src/Config.h` with documentation comment
+- Reference in appropriate manager implementation
+- Add test case to `test/test_main.cpp` if it affects observable behavior
 
-**全局作用域:**
-- 配置常量（上部）
-- WebSocket 客户端实例（行 38）
-- 枚举和结构体定义（行 40-51）
-- 状态变量（行 65-84）
+**Test Cases:**
+- File: `test/test_main.cpp`
+- Framework: Unity (see existing `TEST_ASSERT_*` macros)
+- Globals: Tests run against global `AudioMgr`, `NetworkMgr` instances (already instantiated in main.cpp)
+- Run: `pio test -e esp32-s3`
 
-**函数层次:**
-- 辅助工具函数 (`seenId`, `queueBeep`, `playPendingBeeps`)
-- 协议函数 (`sendStart`, `sendEnd`, `handleHookEvent`)
-- 事件回调 (`webSocketEvent`)
-- 硬件函数 (`setupAudio`, `recordOneChunkAndSend`)
-- Arduino 生命周期 (`setup`, `loop`)
+## Key Abstractions and Patterns
 
-**设计考虑:**
-- 所有函数标记为 `static`（文件作用域），避免命名冲突
-- 使用 `static` 局部缓冲区（如 `buf[CHUNK_SAMPLES]` 在 `recordOneChunkAndSend()` 中）优化性能
-- 使用 volatile 关键字修饰由中断修改的状态（如 `volatile bool wsConnected`）
+**Manager Pattern (Singleton):**
+- Global instances: `extern AudioManager AudioMgr;` and `extern AppNetworkManager NetworkMgr;`
+- Initialization: `begin()` called from `setup()`
+- Update loop: `update()` or `loop()` called from Arduino `loop()`
+- Public API: Methods for state control and data access
+
+**Callback Pattern:**
+- Hook events: `NetworkMgr.setHookCallback(onHookEvent)` registers callback
+- Callback signature: `void (const char* eventName)`
+- Used to decouple network layer from application layer beep logic
+
+**WebSocket Event Handler:**
+- Inline lambda: `_ws.onEvent([this](WStype_t type, ...) { this->webSocketEvent(...); })`
+- Allows member function access while satisfying library callback interface
+
+**Beep Queueing:**
+- Counters: `_pendingStart`, `_pendingPermission`, `_pendingFailure`, `_pendingStop` (uint8_t)
+- Queued during recording: prevents blocking audio input
+- Played after recording stops: `playPendingBeeps()` processes in priority order
+- Pattern lookup: `patternFor(BeepKind)` returns frequency/duration struct
+
+**JSON Message Pattern:**
+- Text messages: Use `StaticJsonDocument<N>` for fixed-size allocation
+- Populate: Direct field assignment (e.g., `doc["type"] = "start"`)
+- Serialize: `serializeJson(doc, out)` produces string
+- Send: `_ws.sendTXT(out)` or `_ws.sendBIN(data, len)` for audio
+
+**Edge-Triggered Button State Machine:**
+- Per-button tracking: `static bool lastState[4]` and `static unsigned long lastPressMs[4]`
+- Transition detection: `cur == LOW && lastState[i] == HIGH` detects falling edge
+- Debounce: `(now - lastPressMs[i]) > 15` requires 15ms minimum
+- Handler dispatch: Member function pointers in `BtnDef` array
+
+**Circular Buffer (Hook Event De-dup):**
+- Storage: `_recentIds[16]` and `_recentIdx` (modulo 16)
+- Insert: `_recentIds[_recentIdx++ % 16] = id`
+- Lookup: Simple linear search (16 elements)
+
+## Important Build & Deployment Paths
+
+**Build:**
+- Configuration: `platformio.ini` specifies `board = esp32-s3-devkitc-1`, libraries in `lib_deps`
+- Artifact: `.pio/build/esp32-s3/firmware.bin` (compiled firmware)
+- Run: `pio run` (compile only), `pio run -t upload` (compile and flash)
+
+**Debugging:**
+- Serial output: `pio device monitor` (115200 baud)
+- Debug statements: `Serial.printf()` and `Serial.println()` throughout codebase
+
+**Testing:**
+- Unit tests: `test/test_main.cpp` runs on device
+- Run: `pio test -e esp32-s3`
+- Mock server: `python scripts/mock_server.py` (separate terminal for integration testing)
+
+## Size and Complexity Profile
+
+| File | Lines | Purpose | Complexity |
+|------|-------|---------|-----------|
+| `src/main.cpp` | 182 | Entry point, control flow, button handling | High (polyphonic event handling) |
+| `src/NetworkManager.cpp` | 251 | WiFi, mDNS, WebSocket, protocol | High (state machine, mDNS retry) |
+| `src/AudioManager.cpp` | 113 | Recording, beep sequencing | Medium (beep pattern lookup, queue) |
+| `src/Config.h` | 47 | Constants | Low |
+| `src/NetworkManager.h` | 56 | Interface, class definition | Low |
+| `src/AudioManager.h` | 47 | Interface, class definition | Low |
+| `src/secrets.h` | 30 | Credentials | N/A (sensitive) |
+| `test/test_main.cpp` | 52 | Unit tests | Medium |
+
+**Total:** ~726 lines C++ across 7 files, ~52 lines tests
+
+## Special Directories
+
+**`.planning/` directory:**
+- Purpose: GSD orchestrator-managed planning and specification documents
+- Generated: Partially (new documents written by GSD tools)
+- Committed: Yes (planning documents should be tracked)
+- Contents: `ARCHITECTURE.md`, `STRUCTURE.md`, phase plans, roadmap
+
+**`.git/` directory:**
+- Purpose: Git version control metadata
+- Generated: Yes (automatically by git)
+- Committed: No (automatically ignored)
+
+**`.claude/` directory:**
+- Purpose: Claude editor local configuration
+- Generated: Yes (automatically)
+- Committed: No (gitignored)
+
+**`.pio/` directory:**
+- Purpose: PlatformIO build artifacts, dependencies, cache
+- Generated: Yes (automatically on first build)
+- Committed: No (in .gitignore)
 
 ---
 
-*结构分析: 2026-02-03*
+*Structure analysis: 2026-02-05*

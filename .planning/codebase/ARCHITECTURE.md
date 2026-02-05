@@ -1,153 +1,227 @@
-# 架构
+# Architecture
 
-**分析日期:** 2026-02-03
+**Analysis Date:** 2026-02-05
 
-## 模式概述
+## Pattern Overview
 
-**整体模式:** 事件驱动的嵌入式客户端
+**Overall:** Modular event-driven embedded client with layered manager pattern
 
-**关键特征:**
-- 单一主程序文件（`src/main.cpp`）包含所有业务逻辑
-- 基于硬件中断和事件轮询的事件处理
-- WebSocket 长连接用于实时音频传输
-- 推送通话（Push-to-Talk）UI 模式，由硬件按钮触发
+**Key Characteristics:**
+- Separation of concerns: networking, audio, and main control logic split into dedicated managers
+- Callback-based communication between layers (hook events, WebSocket messages)
+- Push-to-Talk UI model driven by hardware button events
+- Asynchronous beep queuing system to avoid blocking audio recording
+- mDNS service discovery with periodic re-resolution for fault tolerance
 
-## 层级
+## Layers
 
-**应用层（Application）:**
-- 位置: `src/main.cpp`
-- 用途: 主业务逻辑、用户交互处理、协议状态管理
-- 包含: 按钮处理、录音控制、WebSocket 连接管理、音频 Beep 播放
-- 依赖: M5Unified（硬件）、WebSocket 客户端、ArduinoJson
-- 使用: Arduino 框架直接调用
+**Application Layer:**
+- Purpose: Orchestrates main control flow, button handling, recording lifecycle, beep state
+- Location: `src/main.cpp`
+- Contains: `setup()`, `loop()`, button state machines, activity tracking, auto-shutdown logic
+- Depends on: `AudioManager`, `NetworkManager`, M5Unified hardware API
+- Used by: Arduino runtime (setup/loop paradigm)
 
-**通信层（Communication）:**
-- 位置: `src/main.cpp` 中的 WebSocket 事件处理函数
-- 用途: WebSocket 连接、JSON 消息序列化/反序列化、协议消息处理
-- 包含: `webSocketEvent()`、`sendStart()`、`sendEnd()`、Hook 事件解析
-- 依赖: WebSockets 库、ArduinoJson
-- 使用: 应用层调用，Arduino 事件系统驱动
+**Network Management Layer:**
+- Purpose: Handles WiFi connection, mDNS hostname resolution, WebSocket lifecycle, message protocol
+- Location: `src/NetworkManager.h` (interface), `src/NetworkManager.cpp` (implementation)
+- Contains: WiFi multi-AP connection, mDNS resolution with retry logic, WebSocket event dispatch, JSON message serialization
+- Depends on: WiFiMulti, WebSocketsClient, ArduinoJson, Config constants
+- Used by: Application layer (calls `begin()`, `loop()`, `sendStart/End/Audio()`, external control methods)
 
-**硬件抽象层（Hardware）:**
-- 位置: `src/main.cpp` 中的 M5Unified 接口
-- 用途: 音频录制、播放、按钮输入、WiFi 连接
-- 包含: `setupAudio()`、`recordOneChunkAndSend()`、`playPendingBeeps()`
-- 依赖: M5Unified、WiFi 库
-- 使用: 应用层通过 M5Unified API 使用
+**Audio Management Layer:**
+- Purpose: Encapsulates audio recording, mic/speaker switching, beep pattern sequencing
+- Location: `src/AudioManager.h` (interface), `src/AudioManager.cpp` (implementation)
+- Contains: Microphone recording buffer management, speaker output, beep frequency/pattern definitions, pending beep queue
+- Depends on: M5Unified (Mic/Speaker API), Config audio constants
+- Used by: Application layer (calls `begin()`, `update()`, `startRecording()`, `stopRecording()`, `recordOneChunk()`, `queueBeep()`)
 
-## 数据流
+**Configuration Layer:**
+- Purpose: Centralized compile-time and environment-time constants
+- Location: `src/Config.h`, `src/secrets.h` (gitignored)
+- Contains: Audio parameters (sample rate, chunk size), WebSocket endpoint, authentication token, WiFi credentials, button pins, keep-alive timings
+- Depends on: None (header-only, no runtime dependencies)
+- Used by: All other layers
 
-**ASR 录音流程（用户启动到完成）:**
+## Data Flow
 
-1. 用户按住 Button A（通过轮询检测）
-2. 应用层调用 `sendStart()` 发送 JSON 启动消息（包含 token、reqId、音频格式）
-3. 录音循环：
-   - `recordOneChunkAndSend()` 从麦克风缓冲区读取 320 个样本（20ms @ 16kHz）
-   - 转换为 640 字节的二进制 PCM 数据
-   - 通过 WebSocket 发送二进制帧到 Mac 服务器
-4. 用户释放 Button A 或达到 8 秒超时
-5. 应用层调用 `sendEnd()` 发送停止信号
-6. Mac 服务器处理音频并返回 `result` JSON（包含识别文本）
-7. 在此期间收集的任何 Hook 事件触发的 Beep 在录音停止后播放
+**Recording Flow (User-initiated ASR):**
 
-**Hook 事件处理流程（服务器发起）:**
+1. User presses M5 button A (polled in `loop()`)
+2. `loop()` detects `M5.BtnA.wasPressed()` and calls `NetworkMgr.sendStart(reqId)`
+3. `NetworkManager::sendStart()` constructs JSON start message with audio format metadata and sends via WebSocket text frame
+4. `AudioMgr.startRecording()` sets `_recording = true` and resets pending beeps
+5. In each `loop()` iteration: `AudioMgr.recordOneChunk(buf, CHUNK_SAMPLES)` reads 320 samples (20ms @ 16kHz) from mic via M5Unified
+6. On success, `NetworkMgr.sendAudio(buf, CHUNK_BYTES)` sends 640 bytes as binary WebSocket frame
+7. User releases button A → `M5.BtnA.wasReleased()` detected
+8. `loop()` calls `AudioMgr.stopRecording()` (sets `_recording = false`) and `NetworkMgr.sendEnd(reqId)`
+9. Any beeps queued during recording are now played: `AudioMgr.update()` → `playPendingBeeps()` → M5Speaker output
+10. Mac server processes audio and returns `result` JSON message (handled in WebSocket event)
 
-1. Mac 服务器广播 Hook 事件 JSON 消息（`type: "hook"`）
-2. WebSocket 接收器调用 `webSocketEvent()` 的 WStype_TEXT 分支
-3. `handleHookEvent()` 解析事件类型（PermissionRequest、PostToolUseFailure、Stop）
-4. `queueBeep()` 根据录音状态决定立即播放或排队：
-   - 如果正在录音：增加对应的待处理 Beep 计数
-   - 如果未录音：立即切换到扬声器并播放
-5. 录音停止时 `playPendingBeeps()` 按优先级播放所有排队的 Beep
+**Hook Event Flow (Server-initiated):**
 
-**状态管理:**
+1. Mac server broadcasts JSON hook event: `{"type": "hook", "id": "<uuid>", "hook_event_name": "PermissionRequest", ...}`
+2. `NetworkManager::webSocketEvent()` (WStype_TEXT) deserializes message
+3. Detects `type == "hook"` and calls `handleHookEvent(doc)`
+4. `handleHookEvent()` extracts event name and checks for duplicate ID via `seenId()`
+5. If new event, triggers `_hookCallback(eventName)` (callback set in `main.cpp`)
+6. Callback `onHookEvent()` in `main.cpp` determines beep type based on event name:
+   - "PermissionRequest" → `BEEP_PERMISSION`
+   - "PostToolUseFailure" → `BEEP_FAILURE`
+   - "Stop" → `BEEP_STOP`
+   - "Notification" → `BEEP_PERMISSION` (same as permission)
+   - "Connected" → `BEEP_START`
+7. Calls `AudioMgr.queueBeep(kind)`
+8. If recording: increments pending beep counter (e.g., `_pendingPermission++`)
+9. If not recording: immediately plays beep (via `playPendingBeeps()`)
+10. On recording stop, any queued beeps play with priority: START > PERMISSION > FAILURE > STOP
 
-- `wsConnected`: WebSocket 连接状态，由事件回调更新
-- `recording`: 录音进行中标志，由按钮事件和超时控制
-- `currentReqId`: 当前请求 ID，用于关联 start/end 消息
-- `pendingStop/Permission/Failure`: 待播放 Beep 计数器，在非录音状态时消费
-- `recentIds[]`: 16 元素环形缓冲区用于 Hook ID 去重（防止重复播放 Beep）
+**Keep-Alive Pulse Flow:**
 
-## 关键抽象
+1. `loop()` calls `keepAliveLoop()` (defined in `main.cpp`)
+2. Monitors elapsed time since `lastActivityMs` (updated on button press, recording, etc.)
+3. If active (within `KEEPALIVE_IDLE_TIMEOUT_MS`): generates pulse every `KEEPALIVE_PULSE_INTERVAL_MS` (30s)
+4. Pulse drives GPIO48 (RGB LED data pin) HIGH for `KEEPALIVE_PULSE_DURATION_MS` (100ms) to draw current from power bank
+5. Prevents power bank auto-sleep during voice session
 
-**WebSocket 协议处理:**
-- 位置: `src/main.cpp` 中的 `sendStart()`、`sendEnd()`、`handleHookEvent()`、`webSocketEvent()`
-- 用途: 客户端与 Mac 服务器的通信协议实现
-- 模式:
-  - 启动消息包含完整的音频格式元数据（采样率、通道数、位深度）
-  - 音频数据作为原始二进制帧流传输（不是 JSON）
-  - 接收端通过事件处理回调处理不同消息类型
-  - 使用 `currentReqId` 关联请求-响应对
+**WiFi & mDNS Resolution Flow:**
 
-**音频 Beep 系统:**
-- 位置: `src/main.cpp` 中的 `BeepKind`、`BeepPattern`、`queueBeep()`、`playPendingBeeps()`
-- 用途: 异步播放音频提示，不阻塞录音
-- 模式:
-  - 三种 Beep 类型，每种有唯一的频率、持续时间、重复次数
-  - 使用排队系统：录音期间收集所有事件，停止后批量播放
-  - 播放优先级：PermissionRequest > PostToolUseFailure > Stop
-  - 通过 M5Unified 的扬声器/麦克风独占机制实现（硬件约束）
+1. `NetworkMgr.begin()` calls `connectWiFi()` which uses `WiFiMulti.run()` to connect to first available SSID from `WIFI_NETWORKS`
+2. On WiFi connected, `resolveAndConnect()` checks if `WS_HOST` is already an IP address
+3. If hostname: strips `.local` suffix and calls `MDNS.queryHost(bare_hostname)` with retry loop (5 attempts, 1s backoff)
+4. On successful resolution, stores `_serverIP` and `_ipResolved = true`, starts WebSocket connection
+5. In `loop()`, periodic check every `MDNS_RECHECK_INTERVAL_MS` (5 minutes) re-queries mDNS
+6. If IP changed, disconnects and reconnects WebSocket with new IP
 
-**Hook 事件去重:**
-- 位置: `src/main.cpp` 中的 `recentIds[]`、`seenId()`
-- 用途: 防止同一事件被多次播放 Beep
-- 模式: 简单的 16 元素环形缓冲区，存储最近看到的事件 ID，按发送顺序轮换
+**External Control Button Flow:**
 
-**音频分块系统:**
-- 位置: `src/main.cpp` 中的 `CHUNK_SAMPLES`、`CHUNK_BYTES`、`recordOneChunkAndSend()`
-- 用途: 将连续音频分割成可管理的网络包
-- 规格: 20ms @ 16kHz = 320 样本 = 640 字节（16-bit PCM）
-- 模式: 每次轮询循环调用一次，形成低延迟的流传输
+1. Four GPIO pins configured (pins 5, 6, 7, 8) as INPUT_PULLUP
+2. In `loop()`, edge-triggered detection: reads pin → detects LOW → checks debounce (>15ms since last press)
+3. On valid press, calls corresponding `NetworkMgr` method:
+   - Pin 5 → `sendApprove()`
+   - Pin 6 → `sendReject()`
+   - Pin 7 → `sendSwitchModel()`
+   - Pin 8 → `sendToggleAutoApprove()`
+4. Each sends JSON command frame: `{"type": "command", "action": "..."}`
 
-## 入口点
+## Key Abstractions
 
-**setup() 函数:**
-- 位置: `src/main.cpp` 第 252-272 行
-- 触发: Arduino 启动时自动调用一次
-- 职责:
-  - 初始化串行通信（调试）
-  - 调用 `setupAudio()` 初始化 M5Unified 和音频设备
-  - 连接 WiFi
-  - 启动 WebSocket 客户端并注册事件回调
+**Manager Pattern:**
+- Purpose: Encapsulates subsystem lifecycle and behavior
+- Examples: `AudioManager`, `AppNetworkManager`
+- Pattern: Single global instance (extern), `begin()` initializes, `loop()` or `update()` runs per frame, method-based API
 
-**loop() 函数:**
-- 位置: `src/main.cpp` 第 274-307 行
-- 触发: 每 1ms 重复执行一次（加 1ms 延迟）
-- 职责:
-  - 处理 WebSocket 事件（`ws.loop()`）
-  - 更新 M5 硬件状态（`M5.update()`）
-  - 轮询按钮状态，启动/停止录音
-  - 如果录音中，尝试读取并发送一个音频块
-  - 录音停止时播放待处理的 Beep
+**BeepKind & BeepPattern:**
+- Purpose: Type-safe beep enumeration and frequency/duration specification
+- Location: `src/AudioManager.h`
+- Pattern: Enum maps beep types to frequency patterns via `patternFor(BeepKind)` lookup
 
-## 错误处理
+**Hook Event Deduplication:**
+- Purpose: Prevent duplicate beep playback from same server event
+- Location: `src/NetworkManager.h` (members `_recentIds[]`, `_recentIdx`)
+- Pattern: Circular 16-element buffer storing recently seen hook event IDs; checked on every event reception
 
-**策略:** 故障安全、日志记录、用户通知
+**WebSocket Message Protocol:**
+- Purpose: ASR and control communication with Mac server
+- Patterns:
+  - **Text frames (JSON):** `start`, `end`, `command`, responses
+  - **Binary frames:** Raw PCM audio data (20ms chunks, 16-bit signed, mono, 16kHz)
+  - **Hook broadcast:** Server sends `{"type": "hook", "hook_event_name": "...", "id": "..."}`
 
-**模式:**
+**Activity Tracking:**
+- Purpose: Trigger auto-shutdown and keep-alive pulse
+- Location: `src/main.cpp` globals `lastActivityMs`, functions `updateActivity()`, `checkAutoShutdown()`
+- Pattern: Timestamp on user action (button press, recording), compare in timeout check
 
-- **WiFi 连接失败:** 阻塞式等待（带 Serial 输出），直到连接成功；用户看到"连接中..."
-- **WebSocket 断开:** 应用层知道 `wsConnected` 标志，按钮按下时警告用户；自动重新连接（2 秒间隔）
-- **无效 JSON 响应:** 反序列化失败时记录原始文本到 Serial，继续执行（不中断）
-- **音频读取失败:** `recordOneChunkAndSend()` 返回 false，该轮询循环跳过发送
-- **超时保护:** 强制 8 秒录音上限（`MAX_RECORD_MS`）防止无限录音
+## Entry Points
 
-## 跨越关注点
+**setup() function:**
+- Location: `src/main.cpp` lines 87-105
+- Triggers: Arduino runtime at power-on
+- Responsibilities:
+  - Initialize serial console (115200 baud)
+  - Call `AudioMgr.begin()` (initializes M5Unified, mic enabled, speaker disabled)
+  - Queue startup beep
+  - Call `NetworkMgr.begin()` (WiFi connection, mDNS resolve, WebSocket init)
+  - Register hook callback with `NetworkMgr.setHookCallback(onHookEvent)`
+  - Configure external control button pins as INPUT_PULLUP
+  - Record activity timestamp
 
-**日志记录:**
-- 使用 Serial.println/printf 输出调试信息到串行监视器
-- 关键事件：WiFi 连接、WebSocket 连接/断开、录音开始/停止、接收 JSON 消息
+**loop() function:**
+- Location: `src/main.cpp` lines 107-181
+- Triggers: Arduino runtime repeats after each iteration with 1ms delay
+- Responsibilities:
+  - Call `AudioMgr.update()` (M5.update(), pending beep playback)
+  - Call `NetworkMgr.loop()` (WiFi/mDNS re-check, WebSocket event handling)
+  - Check auto-shutdown timeout
+  - Poll external control buttons (edge-triggered)
+  - Poll M5 button A (start/stop recording)
+  - If recording: read audio chunk and send via WebSocket
+  - Minimal delay (1ms) to maintain responsiveness
 
-**验证:**
-- WiFi 连接状态检查
-- WebSocket 连接状态检查（`wsConnected` 标志）
-- JSON 反序列化错误检查（`deserializeJson()` 返回值）
-- Hook 事件 ID 存在性检查（防止处理空 ID）
+## Error Handling
 
-**认证:**
-- 在 `start` 消息中包含 `AUTH_TOKEN`（硬编码或通过编译标志注入）
-- 服务器端验证 token；客户端无额外验证逻辑
+**Strategy:** Defensive with logging, graceful degradation, non-blocking
+
+**Patterns:**
+
+- **WiFi Connection Lost:**
+  - `NetworkMgr.loop()` detects via `_wifiMulti.run() != WL_CONNECTED`
+  - Logs "WiFi lost, reconnecting..." and attempts immediate reconnect
+  - Does not block; continues polling
+
+- **WebSocket Disconnection:**
+  - Detected via `WStype_DISCONNECTED` event callback
+  - Sets `_wsConnected = false`
+  - Auto-reconnect via WebSockets library with 2s interval
+  - UI shows "not connected" if user presses button
+
+- **mDNS Resolution Failure:**
+  - Retry loop with 5 attempts, 1s backoff in initial resolution
+  - If all fail, logs error and skips WebSocket init
+  - Next `loop()` attempt re-triggers resolution
+  - Falls back to direct IP if user provides IP-based `WS_HOST`
+
+- **JSON Deserialization Error:**
+  - `deserializeJson()` returns non-zero error code
+  - Logs raw text frame and continues (non-fatal)
+  - Prevents protocol errors from crashing device
+
+- **Audio Recording Timeout:**
+  - `recordOneChunk()` detects `MAX_RECORD_MS` (8 seconds) elapsed
+  - Forces `stopRecording()` to prevent indefinite recording
+  - Sends `end` message to server
+
+- **Button Press Without Connection:**
+  - `loop()` checks `NetworkMgr.isConnected()` before calling `sendStart()`
+  - Logs warning if button pressed while disconnected
+  - Does not queue recording
+
+## Cross-Cutting Concerns
+
+**Logging:**
+- Uses `Serial.printf()` and `Serial.println()` throughout
+- Key events logged: WiFi connection, mDNS resolution, WebSocket connect/disconnect, hook events, recording start/stop
+- Debug prefixes: `[Main]`, `[Audio]`, `[NM]` (NetworkManager) identify component
+
+**Validation:**
+- WiFi credentials check: `WIFI_NETWORKS` must have at least one entry (tested in `test_main.cpp`)
+- WebSocket connection check before sending: `isConnected()` guard
+- JSON message validation: deserialize error check, field null-checking with `| ""` defaults
+- Hook event ID validation: reject if `seenId()` detects duplicate
+- Button debounce: require 15ms between edge transitions
+
+**Authentication:**
+- `AUTH_TOKEN` from `secrets.h` included in every `start` message
+- Server-side verification of token; client has no validation logic
+- Token protected by gitignore (not committed to repo)
+
+**State Consistency:**
+- `_recording` flag prevents simultaneous start/stop
+- `_wsConnected` flag prevents sending when disconnected
+- `_ipResolved` flag tracks mDNS readiness
+- Pending beep counters prevent overflow (uint8_t saturation safe)
 
 ---
 
-*架构分析: 2026-02-03*
+*Architecture analysis: 2026-02-05*
