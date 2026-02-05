@@ -33,11 +33,11 @@ void AudioManager::update() {
 BeepPattern AudioManager::patternFor(BeepKind k) {
     switch (k) {
     case BEEP_PERMISSION:
-        return {2000, 80, 2, 500};
+        return {2000, 200, 2, 500};
     case BEEP_FAILURE:
         return {800, 200, 3, 500};
     case BEEP_START:
-        return {2400, 100, 1, 0}; // Single high pitch for start
+        return {2400, 200, 1, 0}; // Single high pitch for start
     case BEEP_STOP:
     default:
         return {1800, 60, 2, 500};
