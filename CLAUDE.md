@@ -87,6 +87,29 @@ src/
 | 调整参数/阈值 | `Config.h` |
 | WiFi/认证 | `secrets.h` |
 
-## 项目状态
+## 项目文档（.planning/ 目录）
 
-当前位于 v0.1 里程碑，Phase 3 已完成，已完成 12 个快速迭代任务。详细状态见 `.planning/STATE.md`，路线图见 `.planning/ROADMAP.md`。
+项目的详细文档在 `.planning/` 目录中。开始工作前，根据任务类型阅读相关文档：
+
+**每次会话必读：**
+- `.planning/STATE.md` — 项目当前进度、已完成的任务、上次停在哪里
+
+**需要理解架构时读：**
+- `.planning/codebase/ARCHITECTURE.md` — 分层架构、数据流、跨层关注点
+- `.planning/codebase/STRUCTURE.md` — 文件布局、代码位置、新功能添加指南
+
+**写代码时参考：**
+- `.planning/codebase/CONVENTIONS.md` — 完整的命名规范、代码风格、设计模式
+- `.planning/codebase/STACK.md` — 技术栈详情、依赖版本、构建标志
+
+**规划新功能时读：**
+- `.planning/ROADMAP.md` — 里程碑、阶段规划
+- `.planning/codebase/CONCERNS.md` — 技术债务、已知问题、安全考虑、扩展限制
+- `.planning/codebase/INTEGRATIONS.md` — 外部集成、WebSocket 协议、硬件接口
+
+**写测试时读：**
+- `.planning/codebase/TESTING.md` — 测试策略、手动验证清单、模拟服务器用法
+
+**了解历史决策时读：**
+- `.planning/quick/*/NNN-SUMMARY.md` — 各快速任务的决策记录和实现总结
+- `.planning/phases/*/NN-SUMMARY.md` — 各阶段的完成总结

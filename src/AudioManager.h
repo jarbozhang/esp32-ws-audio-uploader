@@ -30,6 +30,9 @@ public:
     void startRecording();
     void stopRecording();
 
+    // 查询待处理蜂鸣计数（用于测试）
+    uint8_t pendingBeeps(BeepKind kind) const;
+
 private:
     BeepPattern patternFor(BeepKind k);
     void playPendingBeeps();

@@ -89,6 +89,16 @@ void AudioManager::playPendingBeeps() {
     M5.Mic.begin();
 }
 
+uint8_t AudioManager::pendingBeeps(BeepKind kind) const {
+    switch (kind) {
+    case BEEP_STOP:       return _pendingStop;
+    case BEEP_PERMISSION: return _pendingPermission;
+    case BEEP_FAILURE:    return _pendingFailure;
+    case BEEP_START:      return _pendingStart;
+    default:              return 0;
+    }
+}
+
 void AudioManager::startRecording() {
     _recording = true;
     _recordStartMs = millis();
