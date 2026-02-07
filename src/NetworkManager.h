@@ -23,7 +23,7 @@ public:
     // Claude Code control commands
     void sendApprove();
     void sendReject();
-    void sendSwitchModel();
+    void sendBackspace();
     void sendToggleAutoApprove();
 
     void setHookCallback(HookCallback cb) { _hookCallback = cb; }

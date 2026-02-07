@@ -97,8 +97,8 @@ __attribute__((weak)) void setup() {
 
     // External control buttons (active LOW with internal pull-up)
     pinMode(BTN_APPROVE_PIN,      INPUT_PULLUP);
-    pinMode(BTN_REJECT_PIN,      INPUT_PULLUP);
-    pinMode(BTN_SWITCH_MODEL_PIN, INPUT_PULLUP);
+    pinMode(BTN_REJECT_PIN,       INPUT_PULLUP);
+    pinMode(BTN_BACKSPACE_PIN,    INPUT_PULLUP);
     pinMode(BTN_AUTO_APPROVE_PIN, INPUT_PULLUP);
 
     updateActivity();
@@ -117,9 +117,9 @@ __attribute__((weak)) void loop() {
             void (AppNetworkManager::*handler)();
         };
         static const BtnDef buttons[] = {
-            {BTN_APPROVE_PIN,      "Approve",        &AppNetworkManager::sendApprove},
-            {BTN_REJECT_PIN,      "Reject",         &AppNetworkManager::sendReject},
-            {BTN_SWITCH_MODEL_PIN, "SwitchModel",    &AppNetworkManager::sendSwitchModel},
+            {BTN_APPROVE_PIN,      "Approve",           &AppNetworkManager::sendApprove},
+            {BTN_REJECT_PIN,       "Reject",            &AppNetworkManager::sendReject},
+            {BTN_BACKSPACE_PIN,    "Backspace",         &AppNetworkManager::sendBackspace},
             {BTN_AUTO_APPROVE_PIN, "ToggleAutoApprove", &AppNetworkManager::sendToggleAutoApprove},
         };
         static bool lastState[4] = {true, true, true, true}; // HIGH = not pressed

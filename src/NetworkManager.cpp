@@ -165,10 +165,10 @@ void AppNetworkManager::sendReject() {
     _ws.sendTXT(out);
 }
 
-void AppNetworkManager::sendSwitchModel() {
+void AppNetworkManager::sendBackspace() {
     StaticJsonDocument<64> doc;
     doc["type"] = "command";
-    doc["action"] = "switch_model";
+    doc["action"] = "backspace";
     String out;
     serializeJson(doc, out);
     _ws.sendTXT(out);
